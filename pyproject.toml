@@ -1,0 +1,40 @@
+[project]
+name = "model-price-hub"
+version = "0.1.0"
+description = "每日聚合主流大模型厂商价格(国内 CNY / 国外 USD),提供 Web API 查询"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "httpx>=0.27",
+    "selectolax>=0.3.21",
+    "sqlalchemy>=2.0",
+    "apscheduler>=3.10",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "pyyaml>=6.0",
+    "tenacity>=8.2",
+    "rich>=13.7",
+]
+
+[project.optional-dependencies]
+# Playwright 用于 JS 重渲染页面;非必须,缺失时抓取器自动降级为纯 HTTP。
+render = ["playwright>=1.42"]
+# 视觉提取:截图 → Claude 多模态 → 结构化 JSON。需 MPH_ANTHROPIC_API_KEY。
+vision = ["playwright>=1.42", "anthropic>=0.40"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "httpx>=0.27"]
+
+[project.scripts]
+model-price-hub = "app.pipeline.runner:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,0 +1,61 @@
+# ============================================================================
+# 人工 override 层(provenance=manual)
+# ----------------------------------------------------------------------------
+# 用途:补充抓取器覆盖不到的厂商/渠道,以及纠正/pin 抓取值。合并时优先级最高。
+#
+# ⚠️ 下列为「结构正确的占位示例」,单价需维护者按官网现价核对后更新。
+#    单位统一:每 1M tokens。region: cn|intl,currency: CNY|USD。
+#
+# 抓取器已覆盖(无需在此重复):
+#   - DeepSeek(CNY+USD)······················· DeepSeekScraper
+#   - OpenAI/Anthropic/Gemini/Bedrock/Azure(USD)· LiteLLMScraper
+#   - 国内模型 USD(GLM/Kimi/Qwen/MiniMax 等)···· OpenRouterScraper
+#   - 国内三方托管 CNY(GLM/Kimi/DeepSeek/Qwen)··· SiliconFlow / PPIO(需 Playwright)
+#   - 智谱 GLM 官方 CNY ························· ZhipuScraper
+#   - MiniMax 官方 CNY ························· MiniMaxScraper
+#   - 通义千问官方 CNY ························· AliyunScraper
+#
+# 此处仅保留尚无专用抓取器的官方渠道(如火山方舟豆包),待人工核对或后续加抓取器。
+# ============================================================================
+entries:
+  # ---- MiniMax M3(旗舰,永久五折折后价;正则难解析折扣分档,视觉主源为准,此为无凭据兜底)----
+  - provider: minimax
+    channel: official
+    model: MiniMax-M3
+    region: cn
+    currency: CNY
+    input_per_1m: 2.1
+    output_per_1m: 8.4
+    source_url: https://platform.minimaxi.com/docs/guides/pricing-paygo
+
+  # ---- 腾讯混元文本旗舰(已迁移至 TokenHub 控制台,公开页面/登录墙外抓不到)----
+  # 来源:官方发布价(混元 TurboS 2026-02 发布、T1 正式版发布公告)。
+  # 公开计费文档 1729/97731 只有 role/translation/vision,主文本旗舰在登录后的 TokenHub。
+  - provider: tencent
+    channel: official
+    model: hunyuan-turbos
+    region: cn
+    currency: CNY
+    input_per_1m: 0.8       # 官方发布价;TokenHub 控制台为准
+    output_per_1m: 2.0
+    source_url: https://console.cloud.tencent.com/tokenhub
+
+  - provider: tencent
+    channel: official
+    model: hunyuan-t1
+    region: cn
+    currency: CNY
+    input_per_1m: 1.0
+    output_per_1m: 4.0
+    source_url: https://console.cloud.tencent.com/tokenhub
+
+  # ---- 字节豆包(火山方舟官方渠道,CNY,示例待核对)----
+  - provider: bytedance
+    channel: volcengine
+    model: doubao-pro-256k
+    region: cn
+    currency: CNY
+    input_per_1m: 5.0        # TODO 核对 volcengine.com/product/ark
+    output_per_1m: 9.0
+    context_window: 262144
+    source_url: https://www.volcengine.com/product/ark

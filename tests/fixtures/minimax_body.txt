@@ -1,0 +1,5 @@
+MiniMax-M3	≤ 512k 输入 tokens 永久五折	4.20 2.10	16.80 8.40	0.84 0.42
+MiniMax-M3	> 512k 输入 tokens 永久五折	8.40 4.20	33.60 16.80	1.68 0.84
+MiniMax-M2.7	2.1	8.4	0.42	2.625
+MiniMax-M2.7-highspeed	4.2	16.8	0.42	2.625
+MiniMax-Hailuo-2.3	文生视频，768P 6s	2.00

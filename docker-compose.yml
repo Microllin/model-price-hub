@@ -1,0 +1,38 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  # 容器内调度(每 3 天一次;也可用宿主 cron / k8s CronJob / GitHub Action 替代)
+  scheduler:
+    build: .
+    command: python -m app.scheduler
+    volumes:
+      - ./data:/app/data
+    environment:
+      - MPH_SCHEDULE_INTERVAL_DAYS=3
+      - MPH_SCHEDULE_HOUR=3
+      - MPH_SCHEDULE_MINUTE=17
+      - MPH_USE_PLAYWRIGHT=1
+      - MPH_VISION_MODEL=claude-sonnet-4-6
+      # 视觉主源凭据(从环境/.env 传入;缺失则视觉源跳过、正则兜底)
+      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-}
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-}
+    restart: unless-stopped
+
+  # 一次性手动抓取:docker compose run --rm updater
+  updater:
+    build: .
+    command: python -m app.pipeline.runner
+    volumes:
+      - ./data:/app/data
+    environment:
+      - MPH_USE_PLAYWRIGHT=1
+      - MPH_VISION_MODEL=claude-sonnet-4-6
+      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-}
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-}
+    profiles: ["manual"]

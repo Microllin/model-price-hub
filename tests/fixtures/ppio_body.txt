@@ -1,0 +1,32 @@
+HOT
+GLM-4.7
+￥4/Mt
+输入
+￥16/Mt
+204.8K
+上下文
+￥0.8/Mt
+Cache Read
+￥0.8/Mt
+全参数
+Deepseek V3.2
+￥2/Mt
+输入
+￥3/Mt
+163.84K
+上下文
+Kimi K2 Thinking
+￥4/Mt
+输入
+￥16/Mt
+MiniMax-M2
+￥2.1/Mt
+输入
+￥8.4/Mt
+NEW
+Qwen3.6-35B-A3B
+￥1.8/Mt
+输入
+￥10.8/Mt
+Cache Read
+￥0.42/Mt

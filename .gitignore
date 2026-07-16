@@ -1,0 +1,34 @@
+# ===== 敏感凭据(绝不入库)=====
+.env
+.env.*
+*.env
+secrets.*
+*credential*
+*secret*
+*token*
+*apikey*
+*api_key*
+.anthropic
+# 视觉主源凭据由环境变量注入(ANTHROPIC_AUTH_TOKEN / ANTHROPIC_BASE_URL),不写入仓库
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# 运行期数据:DB 不入库;快照与 latest.json 入库(历史/审计/API 兜底)
+data/prices.db
+data/prices.db-*
+
+# 调试/临时
+/tmp/
+*.log
+tests/fixtures/screenshots/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store

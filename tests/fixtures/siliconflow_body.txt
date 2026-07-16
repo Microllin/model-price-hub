@@ -1,0 +1,31 @@
+deepseek-ai/DeepSeek-V4-Pro
+发布时间: 2026年04月23日
+旗舰全能
+输入: ￥12 / M Tokens
+输出: ￥24 / M Tokens
+
+Qwen/Qwen3.6-35B-A3B
+发布时间: 2026年04月16日
+输入: ￥1.6 / M Tokens
+输出: ￥12.8 / M Tokens
+
+zai-org/GLM-5.2
+发布时间: 2026年06月16日
+Vibe Coding旗舰全能
+输入: ￥6 / M Tokens
+输出: ￥28 / M Tokens
+
+Pro/moonshotai/Kimi-K2.6
+发布时间: 2026年04月20日
+输入: ￥6.5 / M Tokens
+输出: ￥27 / M Tokens
+
+Qwen/Qwen-Image-Edit
+发布时间: 2026年01月26日
+输入: ￥0 / M Tokens
+输出: ￥0.3 / M Tokens
+
+BAAI/bge-large-zh
+发布时间: 2025年01月01日
+输入: ￥0.5 / M Tokens
+输出: ￥0 / M Tokens

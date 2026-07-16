@@ -97,6 +97,7 @@ def official_prices(entries: list[PriceEntry]) -> list[dict]:
                 "confidence": confidence,
                 "conflict": conflict,
                 "primary_source": rep.source,          # 显示价来自哪个源(vision-* 表示视觉主源)
+                "via_vision": is_vision(rep.source),    # 显示价是否由截图视觉识别得到
                 "source_count": len(corroborating),
                 "sources": sorted(corroborating),
                 "official_sources": sorted({e.source for e in offs}),

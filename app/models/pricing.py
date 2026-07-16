@@ -9,7 +9,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime, timezone
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 from sqlalchemy import JSON, DateTime, Float, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -89,6 +89,12 @@ class PriceEntry(BaseModel):
     @property
     def stale(self) -> bool:
         return self.provenance == Provenance.STALE
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def via_vision(self) -> bool:
+        """该价格是否由截图视觉识别得到(source 前缀 vision-)。序列化到 API/快照。"""
+        return self.source.startswith("vision-")
 
     @classmethod
     def from_raw(cls, raw: RawPrice, provenance: Provenance = Provenance.SCRAPED) -> "PriceEntry":

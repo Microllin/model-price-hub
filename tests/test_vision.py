@@ -48,3 +48,24 @@ def test_fetch_skips_without_api_key(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     assert asyncio.run(KimiScraper().fetch()) == []
+
+
+def test_via_vision_field():
+    from app.models.pricing import PriceEntry, Region, Currency
+    v = PriceEntry(provider="zhipu", channel="official", model="GLM-5.2",
+                   canonical_model="glm-5.2", region=Region.CN, currency=Currency.CNY,
+                   input_per_1m=8, output_per_1m=28, source="vision-zhipu")
+    r = v.model_copy(update={"source": "zhipu"})
+    assert v.via_vision is True and r.via_vision is False
+    # 计算字段进序列化(API/快照可见)
+    assert v.model_dump()["via_vision"] is True
+
+
+def test_official_prices_via_vision_flag():
+    from app.api.confidence import official_prices
+    from app.models.pricing import PriceEntry, Region, Currency
+    e = PriceEntry(provider="minimax", channel="official", model="MiniMax-M2.7",
+                   canonical_model="minimax-m2.7", region=Region.CN, currency=Currency.CNY,
+                   official=True, input_per_1m=2.1, output_per_1m=8.4, source="vision-minimax")
+    rows = official_prices([e])
+    assert rows[0]["via_vision"] is True and rows[0]["primary_source"] == "vision-minimax"

@@ -142,6 +142,7 @@
   .conf-medium { color: var(--mid); background: rgba(224,168,56,.15); }
   .conf-low { color: var(--lo); background: rgba(240,101,107,.13); }
   .muted { color: var(--muted); }
+  .vtag { font-size: 12px; cursor: help; opacity: .85; }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
   .empty { padding: 56px; text-align: center; color: var(--muted); }
@@ -220,10 +221,14 @@ function confBadge(r) {
   return `<span class="badge dot conf-${r.confidence}" title="${title}">${CONF_LABEL[r.confidence]}${r.conflict ? ' ⚠' : ''}</span>`;
 }
 
+// 视觉识别标识:截图识别出来的价格加 👁
+const visionTag = r => (r.via_vision || (r.source||'').startsWith('vision-'))
+  ? ` <span class="vtag" title="由截图视觉识别(Claude 多模态)">👁</span>` : '';
+
 // 列定义随 tab 变化
 const COLS = {
   official: [
-    {k:'canonical_model', t:'模型 ID', render:r=>`<span class="model">${r.canonical_model}</span>`},
+    {k:'canonical_model', t:'模型 ID', render:r=>`<span class="model">${r.canonical_model}</span>${visionTag(r)}`},
     {k:'provider', t:'厂商'},
     {k:'currency', t:'货币', render:r=>curBadge(r.currency)},
     {k:'input_per_1m', t:'输入 /1M', num:true, render:r=>fmt(r.input_per_1m)},
@@ -234,7 +239,7 @@ const COLS = {
   channels: [
     {k:'provider', t:'厂商'},
     {k:'channel', t:'渠道', render:r=>`<span class="muted">${r.channel}</span>`},
-    {k:'model', t:'模型', render:r=>`<span class="model">${r.model}</span>${r.source_url?` <a href="${r.source_url}" target="_blank">↗</a>`:''}`},
+    {k:'model', t:'模型', render:r=>`<span class="model">${r.model}</span>${visionTag(r)}${r.source_url?` <a href="${r.source_url}" target="_blank">↗</a>`:''}`},
     {k:'region', t:'地区'},
     {k:'currency', t:'货币', render:r=>curBadge(r.currency)},
     {k:'input_per_1m', t:'输入 /1M', num:true, render:r=>fmt(r.input_per_1m)},

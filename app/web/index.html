@@ -142,7 +142,14 @@
   .conf-medium { color: var(--mid); background: rgba(224,168,56,.15); }
   .conf-low { color: var(--lo); background: rgba(240,101,107,.13); }
   .muted { color: var(--muted); }
-  .vtag { font-size: 12px; cursor: help; opacity: .85; }
+  .vtag {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 1px 7px 1px 6px; margin-left: 6px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: .2px;
+    color: #b79bff; background: rgba(160,109,255,.14);
+    vertical-align: middle; cursor: help; user-select: none;
+  }
+  .vtag svg { width: 11px; height: 11px; }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
   .empty { padding: 56px; text-align: center; color: var(--muted); }
@@ -221,9 +228,9 @@ function confBadge(r) {
   return `<span class="badge dot conf-${r.confidence}" title="${title}">${CONF_LABEL[r.confidence]}${r.conflict ? ' ⚠' : ''}</span>`;
 }
 
-// 视觉识别标识:截图识别出来的价格加 👁
+// 视觉识别标识:截图识别出来的价格加精致小徽章
 const visionTag = r => (r.via_vision || (r.source||'').startsWith('vision-'))
-  ? ` <span class="vtag" title="由截图视觉识别(Claude 多模态)">👁</span>` : '';
+  ? ` <span class="vtag" title="由截图视觉识别(Claude 多模态)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/><path d="M12 8l1.2 2.8L16 12l-2.8 1.2L12 16l-1.2-2.8L8 12l2.8-1.2z"/></svg>AI识别</span>` : '';
 
 // 列定义随 tab 变化
 const COLS = {

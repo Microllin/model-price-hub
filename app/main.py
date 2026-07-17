@@ -51,3 +51,15 @@ def api_info():
 def web_ui():
     """价格浏览页(单页 Web UI)。"""
     return FileResponse(WEB_DIR / "index.html")
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon_svg():
+    """站点图标(矢量,现代浏览器首选)。"""
+    return FileResponse(WEB_DIR / "favicon.svg", media_type="image/svg+xml")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon_ico():
+    """兼容旧浏览器/默认约定的 /favicon.ico 请求,复用同一 SVG。"""
+    return FileResponse(WEB_DIR / "favicon.svg", media_type="image/svg+xml")

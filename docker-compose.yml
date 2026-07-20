@@ -6,6 +6,8 @@ services:
     volumes:
       - ./data:/app/data
     restart: unless-stopped
+    # 轻量 FastAPI，1G 足够
+    mem_limit: 1g
 
   # 容器内调度(每 3 天一次;也可用宿主 cron / k8s CronJob / GitHub Action 替代)
   scheduler:
@@ -23,8 +25,10 @@ services:
       - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-}
       - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-}
     restart: unless-stopped
-
-  # 一次性手动抓取:docker compose run --rm updater
+    # OOM 根因修复：Playwright 批量抓页会拉起多个 Chromium，历史峰值 ~15G 撑爆 16G 整机。
+    # 硬性封顶 4G（含 swap，即不许用 swap 掩盖泄漏）：超限时只 kill 本容器并重启，绝不再拖垮宿主机。
+    mem_limit: 4g
+    memswap_limit: 4g
   updater:
     build: .
     command: python -m app.pipeline.runner
@@ -36,3 +40,6 @@ services:
       - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-}
       - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-}
     profiles: ["manual"]
+    # 与 scheduler 同一套 Playwright 抓取管线，同样封顶 4G
+    mem_limit: 4g
+    memswap_limit: 4g

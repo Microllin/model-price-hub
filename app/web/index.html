@@ -241,6 +241,8 @@ const COLS = {
     {k:'currency', t:'货币', render:r=>curBadge(r.currency)},
     {k:'input_per_1m', t:'输入 /1M', num:true, render:r=>fmt(r.input_per_1m)},
     {k:'output_per_1m', t:'输出 /1M', num:true, render:r=>fmt(r.output_per_1m)},
+    {k:'cached_input_per_1m', t:'缓存读 /1M', num:true, render:r=>fmt(r.cached_input_per_1m)},
+    {k:'cache_write_per_1m', t:'缓存写 /1M', num:true, render:r=>fmt(r.cache_write_per_1m)},
     {k:'context_window', t:'上下文', num:true, render:r=>ctx(r.context_window)},
     {k:'confidence', t:'置信度', render:confBadge},
   ],
@@ -252,6 +254,8 @@ const COLS = {
     {k:'currency', t:'货币', render:r=>curBadge(r.currency)},
     {k:'input_per_1m', t:'输入 /1M', num:true, render:r=>fmt(r.input_per_1m)},
     {k:'output_per_1m', t:'输出 /1M', num:true, render:r=>fmt(r.output_per_1m)},
+    {k:'cached_input_per_1m', t:'缓存读 /1M', num:true, render:r=>fmt(r.cached_input_per_1m)},
+    {k:'cache_write_per_1m', t:'缓存写 /1M', num:true, render:r=>fmt(r.cache_write_per_1m)},
     {k:'source', t:'来源', render:r=>`<span class="muted">${r.source||'—'}</span>`},
   ],
 };

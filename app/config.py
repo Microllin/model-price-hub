@@ -27,6 +27,9 @@ class Settings(BaseSettings):
         "Mozilla/5.0 (compatible; ModelPriceHub/0.1; +https://example.com/model-price-hub)"
     )
     use_playwright: bool = False  # 需 `pip install .[render] && playwright install chromium`
+    # 同时最多几个渲染类抓取器(各自会 launch 一个 Chromium)。默认 1:串行跑浏览器,
+    # 避免 N 个 Chromium 并发把整机内存撑爆(历史峰值 ~15G / OOM)。HTTP 源不受此限,仍全并发。
+    render_concurrency: int = 1
 
     # ---- 视觉提取(截图 → Claude 多模态 → 结构化 JSON)----
     anthropic_api_key: str | None = None      # MPH_ANTHROPIC_API_KEY;或用标准 ANTHROPIC_AUTH_TOKEN

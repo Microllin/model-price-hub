@@ -13,6 +13,7 @@ import argparse
 import asyncio
 import sys
 
+from app.config import settings
 from app.db.session import upsert_entries
 from app.models.pricing import RawPrice
 from app.pipeline.store import load_latest_snapshot, load_overrides, write_snapshot
@@ -35,8 +36,22 @@ async def _run_scraper(scraper) -> list[RawPrice]:
 
 async def collect() -> list[RawPrice]:
     scrapers = all_scrapers()
-    print(f"运行 {len(scrapers)} 个抓取器…")
-    results = await asyncio.gather(*(_run_scraper(s) for s in scrapers))
+    # 渲染类抓取器各自 launch 一个 Chromium,并发跑会把整机内存撑爆(历史峰值 ~15G / OOM)。
+    # 用信号量把「同时在跑的浏览器数」压到 render_concurrency(默认 1);HTTP 源不受此限,仍全并发。
+    render_sem = asyncio.Semaphore(max(1, settings.render_concurrency))
+
+    async def _guarded(s) -> list[RawPrice]:
+        if getattr(s, "requires_render", False):
+            async with render_sem:
+                return await _run_scraper(s)
+        return await _run_scraper(s)
+
+    n_render = sum(1 for s in scrapers if getattr(s, "requires_render", False))
+    print(
+        f"运行 {len(scrapers)} 个抓取器(其中 {n_render} 个走渲染,"
+        f"并发上限 {settings.render_concurrency})…"
+    )
+    results = await asyncio.gather(*(_guarded(s) for s in scrapers))
     return [row for group in results for row in group]
 
 

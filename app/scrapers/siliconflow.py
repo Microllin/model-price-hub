@@ -55,10 +55,14 @@ class SiliconFlowScraper(BaseScraper):
         from playwright.async_api import async_playwright
 
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+            )
             try:
                 page = await browser.new_page(user_agent=settings.user_agent)
-                await page.goto(url, wait_until="networkidle", timeout=45000)
+                await self._prepare_page(page)
+                await page.goto(url, wait_until="domcontentloaded", timeout=45000)
                 await page.wait_for_timeout(3000)  # 等首屏卡片渲染
                 # 页面为懒加载,滚动到底触发加载更多模型
                 prev = 0

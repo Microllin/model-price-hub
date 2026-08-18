@@ -28,6 +28,10 @@ def filter_entries(
     model: str | None = None,
     region: str | None = None,
     currency: str | None = None,
+    service_tier: str | None = None,
+    modality: str | None = None,
+    billing_unit: str | None = None,
+    cache_state: str | None = None,
 ) -> list[PriceEntry]:
     def ok(e: PriceEntry) -> bool:
         if provider and e.provider != provider:
@@ -39,6 +43,14 @@ def filter_entries(
         if region and e.region.value != region:
             return False
         if currency and e.currency.value != currency:
+            return False
+        if service_tier and e.service_tier != service_tier:
+            return False
+        if modality and e.modality != modality:
+            return False
+        if billing_unit and e.billing_unit != billing_unit:
+            return False
+        if cache_state and e.cache_state != cache_state:
             return False
         return True
 

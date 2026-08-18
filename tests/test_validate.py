@@ -33,14 +33,20 @@ def test_insane_price_dropped():
     assert len(report.dropped) == 1
 
 
-def test_large_change_is_frozen_and_keeps_old_value():
+def test_large_official_change_is_auto_applied():
     prev = [_entry("m1", 1.0, 2.0)]
-    # 输入价从 1 → 10(+900%),超过默认 40% 阈值 → 冻结
     entries, report = validate_and_merge([_raw("m1", 10.0, 2.0)], prev)
+    assert not report.frozen
+    assert entries[0].input_per_1m == 10.0
+
+
+def test_large_third_party_change_is_frozen():
+    prev = [_entry("m1", 1.0, 2.0).model_copy(update={"channel":"openrouter", "source":"openrouter", "official":False})]
+    raw = _raw("m1", 10.0, 2.0).model_copy(update={"channel":"openrouter", "source":"openrouter"})
+    entries, report = validate_and_merge([raw], prev)
     assert len(report.frozen) == 1
-    frozen = entries[0]
-    assert frozen.input_per_1m == 1.0            # 保留旧值
-    assert frozen.provenance == Provenance.STALE
+    assert entries[0].input_per_1m == 1.0
+    assert entries[0].provenance == Provenance.STALE
 
 
 def test_small_change_accepted():

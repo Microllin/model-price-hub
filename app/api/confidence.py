@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from statistics import median
+import json
 
 from app.models.pricing import PriceEntry
 
@@ -52,10 +53,10 @@ def official_prices(entries: list[PriceEntry]) -> list[dict]:
     for e in entries:
         if not e.canonical_model:
             continue
-        by_key[(e.canonical_model, e.region.value, e.currency.value)].append(e)
+        by_key[(e.canonical_model, e.region.value, e.currency.value, e.service_tier, e.modality, e.billing_unit, e.cache_state or "", e.context_range or "", json.dumps(e.time_window, sort_keys=True, default=str) if e.time_window else "")].append(e)
 
     result: list[dict] = []
-    for (canon, region, currency), group in by_key.items():
+    for (canon, region, currency, service_tier, modality, billing_unit, cache_state, context_range, _time_window), group in by_key.items():
         offs = [e for e in group if e.official]
         if not offs:
             continue
@@ -91,6 +92,14 @@ def official_prices(entries: list[PriceEntry]) -> list[dict]:
                 "model": rep.model,
                 "region": region,
                 "currency": currency,
+                "service_tier": service_tier,
+                "modality": modality,
+                "billing_unit": billing_unit,
+                "cache_state": cache_state or None,
+                "context_range": context_range or None,
+                "time_window": rep.time_window,
+                "effective_from": rep.effective_from.isoformat() if rep.effective_from else None,
+                "effective_to": rep.effective_to.isoformat() if rep.effective_to else None,
                 "input_per_1m": official_input,
                 "output_per_1m": official_output,
                 "context_window": rep.context_window,

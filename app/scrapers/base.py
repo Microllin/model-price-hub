@@ -44,24 +44,44 @@ class BaseScraper(abc.ABC):
     async def _http_get(self, url: str) -> str:
         headers = {"User-Agent": settings.user_agent, "Accept-Language": "zh-CN,zh,en"}
         async with httpx.AsyncClient(
-            timeout=settings.http_timeout, follow_redirects=True, headers=headers
+            timeout=settings.http_timeout, follow_redirects=True, headers=headers,
+            **({"proxy": settings.http_proxy} if settings.http_proxy else {}),
         ) as client:
             resp = await client.get(url)
             resp.raise_for_status()
             return resp.text
 
     async def _render(self, url: str) -> str:
-        """Playwright 渲染。未安装或未启用时抛错,由 fetch 决定降级。"""
+        """Playwright 渲染，并拦截不会影响价格解析的重资源。"""
         from playwright.async_api import async_playwright  # 延迟导入
 
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            launch_options = {
+                "headless": True,
+                "args": ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+            }
+            if settings.http_proxy:
+                launch_options["proxy"] = {"server": settings.http_proxy}
+            browser = await p.chromium.launch(**launch_options)
             try:
                 page = await browser.new_page(user_agent=settings.user_agent)
-                await page.goto(url, wait_until="networkidle", timeout=int(settings.http_timeout * 1000))
+                await self._prepare_page(page)
+                await page.goto(url, wait_until="domcontentloaded", timeout=int(settings.http_timeout * 1000))
+                await page.wait_for_timeout(int(settings.render_settle_seconds * 1000))
                 return await page.content()
             finally:
                 await browser.close()
+
+    @staticmethod
+    async def _prepare_page(page) -> None:
+        """禁止图片/字体/媒体，显著降低 Chromium 峰值内存。"""
+        async def handle(route):
+            if route.request.resource_type in {"image", "font", "media"}:
+                await route.abort()
+            else:
+                await route.continue_()
+
+        await page.route("**/*", handle)
 
     async def _get(self, url: str) -> str:
         if self.requires_render and settings.use_playwright:

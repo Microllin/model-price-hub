@@ -1,5 +1,5 @@
 # 用 Playwright 官方 Python 镜像:已含 chromium 及全部系统依赖
-FROM mcr.microsoft.com/playwright/python:v1.42.0-jammy
+FROM mcr.microsoft.com/playwright/python:v1.62.0-jammy
 
 WORKDIR /app
 

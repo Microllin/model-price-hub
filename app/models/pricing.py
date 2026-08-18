@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import enum
+import json
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field, computed_field
@@ -51,16 +52,37 @@ class RawPrice(BaseModel):
     cache_write_per_1m: float | None = None
     context_window: int | None = None
     max_output: int | None = None
+    # 价格维度：同一模型可有 standard/flex/priority、不同模态和时段价格
+    service_tier: str = "standard"
+    modality: str = "text"
+    billing_unit: str = "token"
+    cache_state: str | None = None
+    context_range: str | None = None
+    time_window: dict | None = None
+    effective_from: datetime | None = None
+    effective_to: datetime | None = None
     source_url: str = ""
     source: str = ""  # 数据源标识(scraper 名),由 runner 注入,用于多源交叉验证
 
-    def key(self) -> tuple[str, str, str, str, str]:
+    @property
+    def condition_key(self) -> str:
+        payload = {"service_tier": self.service_tier, "modality": self.modality, "billing_unit": self.billing_unit, "cache_state": self.cache_state, "context_range": self.context_range, "time_window": self.time_window}
+        return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=lambda value: value.isoformat() if isinstance(value, datetime) else str(value))
+
+    def key(self) -> tuple:
         return (
             self.provider,
             self.channel,
             self.model,
             self.region.value,
             self.currency.value,
+            self.service_tier,
+            self.modality,
+            self.billing_unit,
+            self.cache_state or "",
+            self.context_range or "",
+            json.dumps(self.time_window, sort_keys=True) if self.time_window else "",
+            self.source,
         )
 
 
@@ -79,12 +101,33 @@ class PriceEntry(BaseModel):
     cache_write_per_1m: float | None = None
     context_window: int | None = None
     max_output: int | None = None
+    service_tier: str = "standard"
+    modality: str = "text"
+    billing_unit: str = "token"
+    cache_state: str | None = None
+    context_range: str | None = None
+    time_window: dict | None = None
+    effective_from: datetime | None = None
+    effective_to: datetime | None = None
     source_url: str = ""
     source: str = ""                 # 数据源标识(scraper 名)
     canonical_model: str = ""        # 归一化模型 id,用于跨源匹配
     official: bool = False           # 是否官方直营渠道定价
     provenance: Provenance = Provenance.SCRAPED
     scraped_at: datetime = Field(default_factory=utcnow)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def condition_key(self) -> str:
+        payload = {
+            "service_tier": self.service_tier,
+            "modality": self.modality,
+            "billing_unit": self.billing_unit,
+            "cache_state": self.cache_state,
+            "context_range": self.context_range,
+            "time_window": self.time_window,
+        }
+        return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=lambda value: value.isoformat() if isinstance(value, datetime) else str(value))
 
     @property
     def stale(self) -> bool:
@@ -103,7 +146,7 @@ class PriceEntry(BaseModel):
         return cls(
             **raw.model_dump(),
             canonical_model=canonicalize(raw.model),
-            official=is_official(raw.channel),
+            official=is_official(raw.channel, raw.source),
             provenance=provenance,
         )
 
@@ -127,7 +170,7 @@ class PriceEntryRow(Base):
     __tablename__ = "price_entries"
     __table_args__ = (
         UniqueConstraint(
-            "provider", "channel", "model", "region", "currency", "source",
+            "provider", "channel", "model", "region", "currency", "service_tier", "modality", "billing_unit", "cache_state", "context_range", "condition_key", "source",
             name="uq_price_key",
         ),
     )
@@ -147,6 +190,15 @@ class PriceEntryRow(Base):
     cache_write_per_1m: Mapped[float | None] = mapped_column(Float, nullable=True)
     context_window: Mapped[int | None] = mapped_column(nullable=True)
     max_output: Mapped[int | None] = mapped_column(nullable=True)
+    service_tier: Mapped[str] = mapped_column(String(32), default="standard", index=True)
+    modality: Mapped[str] = mapped_column(String(32), default="text", index=True)
+    billing_unit: Mapped[str] = mapped_column(String(32), default="token")
+    cache_state: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    context_range: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    condition_key: Mapped[str] = mapped_column(String(128), default="", index=True)
+    time_window: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    effective_from: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    effective_to: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     source_url: Mapped[str] = mapped_column(String(512), default="")
     source: Mapped[str] = mapped_column(String(64), default="", index=True)
@@ -169,6 +221,14 @@ class PriceEntryRow(Base):
             cache_write_per_1m=self.cache_write_per_1m,
             context_window=self.context_window,
             max_output=self.max_output,
+            service_tier=self.service_tier or "standard",
+            modality=self.modality or "text",
+            billing_unit=self.billing_unit or "token",
+            cache_state=self.cache_state,
+            context_range=self.context_range,
+            time_window=self.time_window,
+            effective_from=self.effective_from,
+            effective_to=self.effective_to,
             source_url=self.source_url,
             source=self.source,
             provenance=Provenance(self.provenance),
@@ -191,6 +251,15 @@ class PriceEntryRow(Base):
             cache_write_per_1m=e.cache_write_per_1m,
             context_window=e.context_window,
             max_output=e.max_output,
+            service_tier=e.service_tier,
+            modality=e.modality,
+            billing_unit=e.billing_unit,
+            cache_state=e.cache_state,
+            context_range=e.context_range,
+            condition_key=e.condition_key,
+            time_window=e.time_window,
+            effective_from=e.effective_from,
+            effective_to=e.effective_to,
             source_url=e.source_url,
             source=e.source,
             provenance=e.provenance.value,

@@ -14,6 +14,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
 from app.pipeline.runner import run_once
+from app.discovery.service import run as run_discovery
 
 
 def main() -> None:
@@ -34,13 +35,25 @@ def main() -> None:
         run_once,
         IntervalTrigger(days=days, start_date=start),
         id="price-update",
+        max_instances=1,
+        coalesce=True,
         misfire_grace_time=6 * 3600,  # 视觉跑得慢,宽限 6 小时
     )
+    # Discovery 比价格抓取更适合高频运行：每 6 小时采集一次新闻/公告线索。
+    scheduler.add_job(
+        run_discovery,
+        IntervalTrigger(hours=6),
+        id="discovery-update",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=3600,
+    )
     print(
-        f"调度已启动:每 {days} 天更新一次价格,首次于 {start:%Y-%m-%d %H:%M},"
-        f"之后每 {days} 天。立即先跑一次…"
+        f"调度已启动:价格每 {days} 天更新一次,首次于 {start:%Y-%m-%d %H:%M};"
+        "Discovery 每 6 小时更新一次。立即先跑一次价格和 Discovery…"
     )
     loop.run_until_complete(run_once())
+    loop.run_until_complete(asyncio.to_thread(run_discovery))
     scheduler.start()
     try:
         loop.run_forever()

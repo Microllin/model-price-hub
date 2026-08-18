@@ -7,6 +7,7 @@
 <title>Model Price Hub · 大模型价格</title>
 <style>
   :root {
+    color-scheme: dark;
     --bg: #0b0d12;
     --surface: #12151d;
     --surface-2: #171b25;
@@ -15,39 +16,71 @@
     --fg: #e8ebf2;
     --muted: #8891a5;
     --faint: #5c6478;
-    --accent: #6d8bff;
-    --accent-soft: rgba(109,139,255,.16);
-    --cny: #f5b445;
-    --usd: #43c56a;
-    --hi: #43c56a; --mid: #e0a838; --lo: #f0656b;
+    --accent: #35e88a;
+    --accent-strong: #16c172;
+    --accent-soft: rgba(53,232,138,.14);
+    --cny: #f3c969;
+    --usd: #35e88a;
+    --hi: #35e88a; --mid: #e0b84d; --lo: #f0656b;
     --radius: 12px;
-    --ctrl-h: 36px;
+    --ctrl-h: 34px;
     --shadow: 0 6px 24px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f4f6fb;
+    --surface: #ffffff;
+    --surface-2: #f7f8fc;
+    --line: #e4e8f0;
+    --line-2: #d3d9e5;
+    --fg: #1e2533;
+    --muted: #687386;
+    --faint: #8993a5;
+    --accent: #159957;
+    --accent-strong: #087f46;
+    --accent-soft: rgba(21,153,87,.12);
+    --cny: #b77a08;
+    --usd: #12864c;
+    --hi: #12864c; --mid: #a87508; --lo: #d64b55;
+    --shadow: 0 8px 28px rgba(21,91,57,.12);
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
     margin: 0; color: var(--fg);
     background:
-      radial-gradient(1200px 600px at 78% -10%, rgba(109,139,255,.08), transparent 60%),
+      radial-gradient(900px 500px at 82% -12%, rgba(53,232,138,.10), transparent 62%),
+      radial-gradient(700px 420px at -10% 35%, rgba(22,193,114,.045), transparent 65%),
       var(--bg);
     font: 14px/1.55 "Inter", -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
   /* ---- header ---- */
-  header { padding: 20px 28px 14px; display: flex; align-items: center; gap: 14px; }
+  header { max-width: 1440px; margin: 0 auto; padding: 28px 36px 20px; display: flex; align-items: center; gap: 16px; }
+  .eyebrow { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; margin-bottom: 4px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 7px; margin-left: 12px; padding: 5px 10px; border: 1px solid rgba(53,232,138,.28); border-radius: 999px; color: var(--accent); background: var(--accent-soft); font-size: 11px; font-weight: 700; vertical-align: middle; }
+  .status-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor; }
+  .header-actions { margin-left: auto; display: flex; gap: 8px; }
+  .icon-btn {
+    width: 36px; height: 36px; display: grid; place-items: center;
+    border: 1px solid var(--line-2); border-radius: 10px; cursor: pointer;
+    color: var(--fg); background: var(--surface); font-size: 17px;
+    transition: background .15s, border-color .15s, transform .15s;
+  }
+  .icon-btn:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); transform: translateY(-1px); }
+  .icon-btn:focus-visible { outline: 3px solid var(--accent-soft); border-color: var(--accent); }
   .logo {
     width: 34px; height: 34px; border-radius: 10px; flex: none;
-    background: linear-gradient(135deg, #6d8bff, #a06dff);
-    display: grid; place-items: center; font-size: 18px;
-    box-shadow: 0 4px 14px rgba(109,139,255,.4);
+    background: linear-gradient(135deg, #35e88a, #087f46);
+    display: grid; place-items: center; font-size: 18px; color: #06130d;
+    box-shadow: 0 4px 18px rgba(53,232,138,.32);
   }
-  .htext h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: .2px; }
+  .htext h1 { margin: 0; font-size: clamp(24px, 3vw, 38px); line-height: 1.12; font-weight: 800; letter-spacing: -.8px; }
   .sub { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
   .sub b { color: var(--fg); font-weight: 600; }
 
-  main { padding: 4px 28px 28px; }
+  main { max-width: 1440px; margin: 0 auto; padding: 10px 36px 44px; }
 
   /* ---- tabs ---- */
   .tabs {
@@ -61,7 +94,24 @@
     transition: color .15s, background .15s; white-space: nowrap;
   }
   .tab:hover { color: var(--fg); }
-  .tab.active { color: #fff; background: var(--accent); box-shadow: 0 2px 10px rgba(109,139,255,.35); }
+  .tab.active { color: #06130d; background: var(--accent); box-shadow: 0 2px 14px rgba(53,232,138,.28); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .news-toolbar { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; padding: 16px; border-bottom: 1px solid var(--line); }
+  .news-list { display: grid; gap: 1px; background: var(--line); }
+  .news-item { padding: 20px 22px; background: var(--surface); }
+  .news-item:hover { background: var(--surface-2); }
+  .news-top { display: flex; align-items: flex-start; gap: 12px; justify-content: space-between; }
+  .news-title { margin: 0; font-size: 16px; line-height: 1.4; }
+  .news-title a { color: var(--fg); }
+  .news-title a:hover { color: var(--accent); }
+  .news-summary { margin: 10px 0 14px; color: var(--muted); line-height: 1.7; max-width: 920px; }
+  .news-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; color: var(--faint); font-size: 12px; }
+  .news-empty { padding: 56px 20px; text-align: center; color: var(--muted); }
+  .news-actions { display: flex; gap: 7px; margin-top: 14px; align-items: center; }
+  .news-actions .small-btn, .news-actions .danger-btn { min-width: 88px; }
+  .candidate-status { flex: none; }
+
 
   .tabhint { color: var(--muted); font-size: 12.5px; margin: 0 2px 14px; max-width: 900px; }
 
@@ -76,14 +126,14 @@
 
   /* ---- toolbar / controls ---- */
   .toolbar {
-    display: flex; flex-wrap: wrap; gap: 9px; align-items: center;
-    padding: 14px 16px; border-bottom: 1px solid var(--line);
-    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    padding: 10px 12px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(53,232,138,.035), var(--surface));
   }
   .ctrl {
     height: var(--ctrl-h); background: var(--surface-2); color: var(--fg);
     border: 1px solid var(--line-2); border-radius: 9px;
-    padding: 0 12px; font-size: 13px; outline: none;
+    padding: 0 10px; font-size: 12px; outline: none;
     transition: border-color .15s, box-shadow .15s, background .15s;
   }
   .ctrl:hover { border-color: #3a4356; }
@@ -95,30 +145,42 @@
     background-repeat: no-repeat; background-position: right 10px center;
   }
   select.ctrl:hover { background-color: #1c212d; }
-  select.ctrl option { background: var(--surface-2); }
+  :root[data-theme="light"] select.ctrl:hover { background-color: #eef1f8; }
+  select.ctrl option { color: var(--fg); background: var(--surface-2); }
   input.search {
-    min-width: 240px; flex: 1 1 240px; max-width: 340px;
+    min-width: 200px; flex: 1 1 200px; max-width: 300px;
     padding-left: 34px;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%238891a5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>");
     background-repeat: no-repeat; background-position: left 11px center;
   }
   input.search::placeholder { color: var(--faint); }
   .count {
-    color: var(--muted); font-size: 12.5px; margin-left: auto;
+    color: var(--muted); font-size: 11.5px; margin-left: auto;
     padding: 5px 11px; background: var(--surface-2);
     border: 1px solid var(--line); border-radius: 999px; white-space: nowrap;
   }
 
   /* ---- table ---- */
-  .wrap { overflow: auto; max-height: calc(100vh - 250px); }
+  .wrap { overflow: auto; max-height: calc(100vh - 250px); overscroll-behavior: contain; }
   .wrap::-webkit-scrollbar { width: 10px; height: 10px; }
   .wrap::-webkit-scrollbar-thumb { background: #2a3142; border-radius: 10px; border: 2px solid var(--surface); }
   .wrap::-webkit-scrollbar-thumb:hover { background: #384157; }
-  table { border-collapse: collapse; width: 100%; min-width: 900px; }
-  th, td { text-align: left; padding: 11px 14px; white-space: nowrap; }
+  :root[data-theme="light"] .wrap::-webkit-scrollbar-thumb { background: #c4ccda; }
+  :root[data-theme="light"] .wrap::-webkit-scrollbar-thumb:hover { background: #aeb9ca; }
+  table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; table-layout: fixed; font-size: 12px; }
+  th, td { height: 38px; text-align: left; padding: 6px 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
   td { border-top: 1px solid var(--line); }
+  th:first-child, td:first-child { position: sticky; left: 0; z-index: 2; background: var(--surface); box-shadow: 1px 0 0 var(--line); }
+  th:first-child { z-index: 4; }
+  tbody tr:nth-child(even) td:first-child { background: color-mix(in srgb, var(--surface) 98%, white); }
+  tbody tr:hover td:first-child { background: color-mix(in srgb, var(--surface) 88%, var(--accent)); }
+  table[data-layout="official"] th:nth-child(1), table[data-layout="official"] td:nth-child(1) { width: 190px; max-width: 190px; }
+  table[data-layout="official"] th:nth-child(8), table[data-layout="official"] td:nth-child(8) { width: 310px; max-width: 310px; }
+  table[data-layout="official"] th:nth-child(n+9), table[data-layout="official"] td:nth-child(n+9) { width: 92px; max-width: 92px; }
+  table[data-layout="channels"] th:nth-child(6), table[data-layout="channels"] td:nth-child(6) { width: 310px; max-width: 310px; }
+  table[data-layout="channels"] th:nth-child(7), table[data-layout="channels"] td:nth-child(7) { width: 220px; max-width: 220px; }
   th {
-    color: var(--faint); font-weight: 600; font-size: 11.5px;
+    color: var(--faint); font-weight: 600; font-size: 10.5px;
     letter-spacing: .4px; text-transform: uppercase; cursor: pointer;
     user-select: none; position: sticky; top: 0; z-index: 2;
     background: var(--surface); box-shadow: inset 0 -1px 0 var(--line);
@@ -128,7 +190,7 @@
   tbody tr { transition: background .1s; }
   tbody tr:nth-child(even) { background: rgba(255,255,255,.012); }
   tbody tr:hover { background: var(--accent-soft); }
-  .model { font-weight: 600; color: #eef1f8; }
+  .model { display: inline-block; max-width: 175px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; font-weight: 600; color: var(--fg); }
 
   /* ---- badges ---- */
   .badge {
@@ -147,70 +209,203 @@
     display: inline-flex; align-items: center; gap: 3px;
     padding: 1px 7px 1px 6px; margin-left: 6px; border-radius: 999px;
     font-size: 10.5px; font-weight: 600; letter-spacing: .2px;
-    color: #b79bff; background: rgba(160,109,255,.14);
+    color: var(--accent); background: var(--accent-soft);
     vertical-align: middle; cursor: help; user-select: none;
   }
   .vtag svg { width: 11px; height: 11px; }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
   .empty { padding: 56px; text-align: center; color: var(--muted); }
+  .settings-card { margin-top: 16px; padding: 20px; }
+  .settings-modal { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(2,7,5,.74); backdrop-filter: blur(10px); }
+  .settings-modal.open { display: flex; }
+  .settings-dialog { width: min(720px, 100%); max-height: min(820px, 92vh); overflow: auto; padding: 28px; border: 1px solid rgba(53,232,138,.24); border-radius: 20px; background: var(--surface); box-shadow: 0 24px 80px rgba(0,0,0,.42), 0 0 40px rgba(53,232,138,.08); }
+  .dialog-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+  .dialog-title h2 { margin: 0; font-size: 22px; letter-spacing: -.3px; }
+  .dialog-title p { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+  .close-btn { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: 9px; color: var(--muted); background: transparent; cursor: pointer; }
+  .close-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .dialog-section { padding: 18px 0; border-top: 1px solid var(--line); }
+  .dialog-section:first-of-type { border-top: 0; padding-top: 0; }
+  .dialog-section h3 { margin: 0 0 12px; font-size: 13px; }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field { display: grid; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { color: var(--muted); font-size: 12px; font-weight: 600; }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
+  .ghost-btn { height: 36px; padding: 0 14px; border: 1px solid var(--line-2); border-radius: 9px; color: var(--fg); background: transparent; cursor: pointer; font: inherit; }
+  .ghost-btn:hover { border-color: var(--accent); color: var(--accent); }
+  @media (max-width: 760px) { header { padding: 22px 18px 16px; } main { padding: 8px 12px 32px; } .field-grid { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .header-actions { gap: 5px; } .settings-dialog { padding: 22px; } .toolbar { gap: 5px; padding: 9px; } .toolbar .ctrl { flex: 1 1 145px; min-width: 145px; } input.search { min-width: 100%; flex-basis: 100%; max-width: none; } th, td { height: 36px; padding: 5px 7px; font-size: 11px; } .wrap { max-height: calc(100vh - 285px); } }
+  .settings-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .settings-head h2 { margin: 0; font-size: 16px; }
+  .settings-note { color: var(--muted); font-size: 12px; }
+  .webhook-form { display: block; }
+  .check-list { display: flex; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: 12px; }
+  .check-list label { display: inline-flex; gap: 4px; align-items: center; }
+  .primary-btn, .danger-btn, .small-btn { min-width: 76px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 0 11px; cursor: pointer; font: inherit; line-height: 1; white-space: nowrap; }
+  .primary-btn { color: #06130d; background: var(--accent); border: 1px solid var(--accent); font-weight: 700; box-shadow: 0 3px 12px rgba(53,232,138,.18); }
+  .danger-btn { color: var(--lo); background: transparent; border: 1px solid currentColor; }
+  .small-btn { color: var(--fg); background: var(--surface-2); border: 1px solid var(--line-2); font-size: 12px; }
+  .small-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .webhook-list { display: grid; gap: 9px; margin-top: 16px; }
+  .webhook-list:empty { display: none; }
+  .webhook-item { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+  .webhook-info { min-width: 0; flex: 1; }
+  .webhook-info strong { display: block; }
+  .webhook-url { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  @media (max-width: 760px) { .webhook-item { align-items: flex-start; flex-wrap: wrap; } }
 </style>
+<script>
+  (() => {
+    const saved = localStorage.getItem('mph-theme');
+    const theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.documentElement.dataset.theme = theme;
+  })();
+</script>
 </head>
 <body>
 <header>
-  <div class="logo">¥</div>
+  <div class="logo" aria-hidden="true">¥</div>
   <div class="htext">
-    <h1>Model Price Hub · 主流大模型价格</h1>
-    <div class="sub" id="meta">加载中…</div>
+    <div class="eyebrow">Model Intelligence · Pricing Monitor</div>
+    <h1>大模型价格中心 <span class="status-pill">实时监控</span></h1>
+    <div class="sub" id="meta">正在加载价格数据…</div>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" id="adminOpen" type="button" aria-label="后台管理" title="后台管理">⚙</button>
+    <button class="icon-btn" id="sourceOpen" type="button" aria-label="官方来源与 Agent 设置" title="官方来源与 Agent 设置">◎</button>
+    <button class="icon-btn" id="webhookOpen" type="button" aria-label="打开 Webhook 设置" title="Webhook 设置"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M10.6 13.4a4.5 4.5 0 0 0 6.4.1l2-2a4.5 4.5 0 0 0-6.4-6.4l-1.1 1.1"/><path d="M13.4 10.6a4.5 4.5 0 0 0-6.4-.1l-2 2a4.5 4.5 0 0 0 6.4 6.4l1.1-1.1"/></svg></button>
+    <button class="icon-btn" id="themeToggle" type="button" aria-label="切换到日间模式" title="切换主题"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
   </div>
 </header>
 
 <main>
   <div class="tabs">
-    <div class="tab active" data-tab="official">官方价 + 置信度</div>
-    <div class="tab" data-tab="unofficial">非官方渠道价</div>
-    <div class="tab" data-tab="all">全部</div>
+    <div class="tab active" data-tab="official">官方价格 · 含可信度</div>
+    <div class="tab" data-tab="unofficial">第三方渠道</div>
+    <div class="tab" data-tab="all">全部价格</div>
+    <div class="tab" data-tab="discovery">变更资讯</div>
   </div>
   <div class="tabhint" id="tabhint"></div>
 
+  <div class="tab-content active" id="pricePanel">
   <div class="card">
     <div class="toolbar">
-      <input type="search" id="q" class="ctrl search" placeholder="搜索模型 ID,如 claude / glm / deepseek" />
-      <select id="provider" class="ctrl"><option value="">全部厂商</option></select>
-      <select id="channel" class="ctrl"><option value="">全部渠道</option></select>
+      <input type="search" id="q" class="ctrl search" placeholder="搜索模型名称，例如 claude、glm、deepseek" aria-label="搜索模型" />
+      <select id="provider" class="ctrl" aria-label="筛选厂商"><option value="">所有厂商</option></select>
+      <select id="channel" class="ctrl" aria-label="筛选渠道"><option value="">所有渠道</option></select>
       <select id="region" class="ctrl">
-        <option value="">全部地区</option>
-        <option value="cn">国内 (cn)</option>
-        <option value="intl">国外 (intl)</option>
+        <option value="">所有地区</option>
+        <option value="cn">中国大陆 · CNY</option>
+        <option value="intl">国际 · USD</option>
       </select>
       <select id="currency" class="ctrl">
-        <option value="">全部货币</option>
-        <option value="CNY">仅 CNY</option>
-        <option value="USD">仅 USD</option>
+        <option value="">所有币种</option>
+        <option value="CNY">仅显示 CNY</option>
+        <option value="USD">仅显示 USD</option>
+      </select>
+      <select id="serviceTier" class="ctrl" aria-label="筛选服务档位">
+        <option value="">所有服务档位</option>
+        <option value="standard">标准 Standard</option>
+        <option value="flex">Flex</option>
+        <option value="fast">Fast</option>
+        <option value="priority">Priority</option>
+        <option value="batch">Batch</option>
+        <option value="scheduled">峰谷 Scheduled</option>
+      </select>
+      <select id="modality" class="ctrl" aria-label="筛选模态">
+        <option value="">所有模态</option>
+        <option value="text">文本</option>
+        <option value="image">图片</option>
+        <option value="audio">音频</option>
+        <option value="video">视频</option>
       </select>
       <select id="confidence" class="ctrl">
-        <option value="">全部置信度</option>
-        <option value="high">高置信</option>
-        <option value="medium">中置信</option>
-        <option value="low">低置信</option>
+        <option value="">所有可信度</option>
+        <option value="high">高可信</option>
+        <option value="medium">中可信</option>
+        <option value="low">低可信</option>
       </select>
       <select id="convert" class="ctrl">
-        <option value="">不换算</option>
-        <option value="CNY">换算成 CNY</option>
-        <option value="USD">换算成 USD</option>
+        <option value="">保持原币种</option>
+        <option value="CNY">折算为 CNY</option>
+        <option value="USD">折算为 USD</option>
       </select>
       <span class="count" id="count"></span>
     </div>
 
     <div class="wrap">
-      <table>
+      <table id="priceTable" data-layout="official">
         <thead id="thead"></thead>
         <tbody id="rows"></tbody>
       </table>
       <div class="empty" id="empty" style="display:none">无匹配数据</div>
     </div>
   </div>
+  </div>
+
+  <div class="tab-content" id="discoveryPanel">
+    <div class="card">
+      <div class="news-toolbar">
+        <select id="newsType" class="ctrl" aria-label="筛选变更类型"><option value="">所有变更类型</option><option value="model_added">模型上线</option><option value="model_removed">模型下线</option><option value="price_changed">价格调整</option><option value="model_updated">模型更新</option><option value="news">行业资讯</option></select>
+        <select id="newsStatus" class="ctrl" aria-label="筛选资讯状态"><option value="">所有状态</option><option value="candidate">待确认</option><option value="verified">已验证</option><option value="rejected">已忽略</option></select>
+        <button class="primary-btn" id="runDiscovery" type="button">运行发现</button>
+        <button class="small-btn" id="refreshNews" type="button">刷新资讯</button>
+        <span class="count" id="newsCount"></span>
+      </div>
+      <div class="news-list" id="newsList"><div class="news-empty">正在加载变更资讯…</div></div>
+    </div>
+  </div>
+
 </main>
+
+<div class="settings-modal" id="adminModal" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+  <div class="settings-dialog">
+    <div class="dialog-title"><div><h2 id="adminTitle">后台管理</h2><p>管理员登录后管理通知、数据来源、策略和 API Key。</p></div><button class="close-btn" id="adminClose" type="button">×</button></div>
+    <div id="adminLogin"><form id="loginForm"><div class="field-grid"><input class="ctrl" id="loginUser" placeholder="管理员账号" autocomplete="username" required /><input class="ctrl" id="loginPassword" type="password" placeholder="管理员密码" autocomplete="current-password" required /></div><div class="dialog-actions"><button class="primary-btn" type="submit">登录</button></div></form></div>
+    <div id="adminPanel" style="display:none">
+      <div class="dialog-section"><h3>策略</h3><div class="field-grid"><label><input type="checkbox" id="policyOfficial" checked /> 官方自动执行</label><label><input type="checkbox" id="policyAgent" checked /> Agent 自动复核</label><label><input type="checkbox" id="policyLifecycle" checked /> 模型上下线通知</label><label><input type="checkbox" id="policyPrice" checked /> 价格变化通知</label><label><input type="checkbox" id="policyThird" /> 第三方通知</label><input class="ctrl" id="policyFreeze" type="number" step="0.01" min="0" placeholder="第三方冻结阈值" /></div><div class="dialog-actions"><button class="primary-btn" id="savePolicy" type="button">保存策略</button></div></div>
+      <div class="dialog-section"><h3>API Key</h3><div class="field-grid"><input class="ctrl" id="apiKeyName" placeholder="Key 名称" /><select class="ctrl" id="apiKeyScope"><option value="read">只读</option><option value="write">写入</option><option value="admin">管理</option></select></div><div class="dialog-actions"><button class="primary-btn" id="createApiKey" type="button">创建 API Key</button></div><div class="webhook-list" id="apiKeyList"></div></div>
+      <div class="dialog-actions"><button class="danger-btn" id="logoutBtn" type="button">退出登录</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="settings-modal" id="sourceModal" role="dialog" aria-modal="true" aria-labelledby="sourceTitle">
+  <div class="settings-dialog">
+    <div class="dialog-title"><div><h2 id="sourceTitle">官方来源与 Agent</h2><p>第一层模型目录、第二层价格页、第三层监控页分别配置；Agent 处理 OCR、页面差异和上下文研判。</p></div><button class="close-btn" id="sourceClose" type="button">×</button></div>
+    <form id="sourceForm"><div class="field-grid">
+      <input class="ctrl" id="sourceProvider" placeholder="厂商，例如 deepseek" required />
+      <input class="ctrl" id="sourceName" placeholder="来源名称" required />
+      <select class="ctrl" id="sourceKind"><option value="model_catalog">第一层 · 官方模型目录</option><option value="pricing">第二层 · 官方价格页</option><option value="monitor">第三层 · 页面监控</option><option value="rss">第三层 · RSS</option><option value="announcement">第三层 · 公告</option></select>
+      <select class="ctrl" id="sourceAgent"><option value="html_extract">HTML 解析</option><option value="ocr">Agent OCR</option><option value="page_diff">页面差异 Agent</option><option value="context_review">上下文研判 Agent</option></select>
+      <input class="ctrl full" id="sourceUrl" type="url" placeholder="官方页面 URL" required />
+    </div><div class="dialog-actions"><button class="primary-btn" type="submit">添加官方来源</button></div></form>
+    <div class="dialog-section"><h3>已配置来源</h3><div class="webhook-list" id="sourceList"></div></div>
+  </div>
+</div>
+
+<div class="settings-modal" id="webhookModal" role="dialog" aria-modal="true" aria-labelledby="webhookTitle">
+  <div class="settings-dialog">
+    <div class="dialog-title">
+      <div><h2 id="webhookTitle">Webhook 通知中心</h2><p>管理价格变动、模型上线与下线通知。支持飞书及标准 JSON Webhook。</p></div>
+      <button class="close-btn" id="webhookClose" type="button" aria-label="关闭设置"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+    </div>
+    <form id="webhookForm">
+      <div class="dialog-section">
+        <h3>添加通知端点</h3>
+        <div class="field-grid">
+          <div class="field"><label for="webhookName">配置名称</label><input class="ctrl" id="webhookName" placeholder="例如：飞书 · 价格监控" required /></div>
+          <div class="field"><label for="webhookSecret">签名密钥（可选）</label><input class="ctrl" id="webhookSecret" type="password" placeholder="不会在页面回显" autocomplete="new-password" /></div>
+          <div class="field full"><label for="webhookUrl">Webhook 地址</label><input class="ctrl" id="webhookUrl" type="url" placeholder="https://内网地址/webhook" required /></div>
+        </div>
+        <div class="check-list" style="margin-top:14px"><label><input type="checkbox" name="webhookEvent" value="price_changed" checked />价格变动</label><label><input type="checkbox" name="webhookEvent" value="model_added" checked />模型上线</label><label><input type="checkbox" name="webhookEvent" value="model_removed" checked />模型下线</label></div>
+        <div class="dialog-actions"><button class="primary-btn" type="submit">保存配置</button></div>
+      </div>
+    </form>
+    <div class="dialog-section"><h3>已配置端点</h3><div class="webhook-list" id="webhookList"><div class="muted">正在加载 Webhook 配置…</div></div></div>
+  </div>
+</div>
 
 <script>
 let ALL = [];
@@ -218,15 +413,25 @@ let TAB = "official";
 let sortKey = "provider", sortDir = 1;
 
 const $ = id => document.getElementById(id);
-const fmt = v => v == null ? '<span class="muted">—</span>' : (+v).toLocaleString('en-US', {maximumFractionDigits: 6});
+const fmt = v => v == null ? '<span class="muted">—</span>' : (+v).toLocaleString('zh-CN', {maximumFractionDigits: 6});
 const ctx = v => v == null ? '<span class="muted">—</span>' : (v >= 1000 ? (v/1000).toLocaleString() + 'K' : v);
 const badge = (cls, t) => `<span class="badge ${cls}">${t}</span>`;
 const curBadge = c => badge((c === 'CNY' ? 'b-cny' : 'b-usd') + ' dot', c);
+const windowText = r => {
+  const tw = r.time_window;
+  if (!tw) return '全天';
+  const windows = (tw.windows || []).map(w => `${w.start}-${w.end}`).join('、');
+  const effective = r.effective_from || tw.effective_from;
+  const when = effective ? `｜${new Date(effective).toLocaleString('zh-CN')}` : '';
+  const text = `${tw.timezone || ''} ${windows || `${tw.start || ''}-${tw.end || ''}`}${when}`.trim();
+  return `<span title="${text}">${text}</span>`;
+};
 
 const CONF_LABEL = {high: '高', medium: '中', low: '低'};
+const CONF_TITLE = {high: '高可信', medium: '中可信', low: '低可信'};
 function confBadge(r) {
-  const title = `印证源 ${r.source_count} 个:${(r.sources||[]).join(', ')}` + (r.conflict ? ' · 官方源存在分歧,待核' : '');
-  return `<span class="badge dot conf-${r.confidence}" title="${title}">${CONF_LABEL[r.confidence]}${r.conflict ? ' ⚠' : ''}</span>`;
+  const title = `已由 ${r.source_count} 个数据源交叉验证：${(r.sources||[]).join('、')}` + (r.conflict ? '；官方数据存在差异，建议人工复核' : '');
+  return `<span class="badge dot conf-${r.confidence}" title="${title}">${CONF_TITLE[r.confidence]||'未知'}${r.conflict ? ' ⚠' : ''}</span>`;
 }
 
 // 视觉识别标识:截图识别出来的价格加精致小徽章
@@ -236,8 +441,14 @@ const visionTag = r => (r.via_vision || (r.source||'').startsWith('vision-'))
 // 列定义随 tab 变化
 const COLS = {
   official: [
-    {k:'canonical_model', t:'模型 ID', render:r=>`<span class="model">${r.canonical_model}</span>${visionTag(r)}`},
+    {k:'canonical_model', t:'模型 ID', render:r=>`<span class="model" title="${r.canonical_model}">${r.canonical_model}</span>${visionTag(r)}`},
     {k:'provider', t:'厂商'},
+    {k:'service_tier', t:'服务档位', render:r=>`<span class="badge b-manual">${r.service_tier||'standard'}</span>`},
+    {k:'modality', t:'模态'},
+    {k:'billing_unit', t:'计费单位'},
+    {k:'cache_state', t:'缓存状态', render:r=>r.cache_state||'—'},
+    {k:'context_range', t:'上下文档位', render:r=>r.context_range||'—'},
+    {k:'time_window', t:'生效时段', render:windowText},
     {k:'currency', t:'货币', render:r=>curBadge(r.currency)},
     {k:'input_per_1m', t:'输入 /1M', num:true, render:r=>fmt(r.input_per_1m)},
     {k:'output_per_1m', t:'输出 /1M', num:true, render:r=>fmt(r.output_per_1m)},
@@ -249,7 +460,11 @@ const COLS = {
   channels: [
     {k:'provider', t:'厂商'},
     {k:'channel', t:'渠道', render:r=>`<span class="muted">${r.channel}</span>`},
-    {k:'model', t:'模型', render:r=>`<span class="model">${r.model}</span>${visionTag(r)}${r.source_url?` <a href="${r.source_url}" target="_blank">↗</a>`:''}`},
+    {k:'service_tier', t:'服务档位'},
+    {k:'modality', t:'模态'},
+    {k:'cache_state', t:'缓存状态', render:r=>r.cache_state||'—'},
+    {k:'time_window', t:'生效时段', render:windowText},
+    {k:'model', t:'模型', render:r=>`<span class="model" title="${r.model}">${r.model}</span>${visionTag(r)}${r.source_url?` <a href="${r.source_url}" target="_blank">↗</a>`:''}`},
     {k:'region', t:'地区'},
     {k:'currency', t:'货币', render:r=>curBadge(r.currency)},
     {k:'input_per_1m', t:'输入 /1M', num:true, render:r=>fmt(r.input_per_1m)},
@@ -262,6 +477,7 @@ const COLS = {
 const cols = () => TAB === 'official' ? COLS.official : COLS.channels;
 
 function renderHead() {
+  $('priceTable').dataset.layout = TAB === 'official' ? 'official' : 'channels';
   $('thead').innerHTML = '<tr>' + cols().map(c =>
     `<th class="${c.num?'num':''}" data-k="${c.k}">${c.t}</th>`).join('') + '</tr>';
   $('thead').querySelectorAll('th').forEach(th => th.addEventListener('click', () => {
@@ -279,7 +495,7 @@ function render() {
     if (typeof x === 'string') return x.localeCompare(y)*sortDir;
     return (x-y)*sortDir;
   });
-  $('count').textContent = `${rows.length} 条`;
+  $('count').textContent = `共 ${rows.length.toLocaleString('zh-CN')} 条`;
   $('empty').style.display = rows.length ? 'none' : 'block';
   const cs = cols();
   $('rows').innerHTML = rows.map(r =>
@@ -289,7 +505,7 @@ function render() {
 
 async function load() {
   const p = new URLSearchParams();
-  for (const k of ['provider','region','currency']) { const v=$(k).value; if(v) p.set(k,v); }
+  for (const k of ['provider','region','currency','serviceTier','modality']) { const v=$(k).value; if(v) p.set(k === 'serviceTier' ? 'service_tier' : k,v); }
 
   let url;
   if (TAB === 'official') {
@@ -303,26 +519,133 @@ async function load() {
   }
   const d = await (await fetch(url)).json();
   ALL = d.entries;
-  $('meta').innerHTML = `数据日期 <b>${d.data_date||'—'}</b> · 汇率 1 USD ≈ ${d.fx_usd_to_cny} CNY · 单价:每 1M tokens · <a href="/docs" target="_blank">API</a>`;
+  $('meta').innerHTML = `数据日期：<b>${d.data_date||'—'}</b> · 参考汇率：1 USD ≈ ${d.fx_usd_to_cny} CNY · 价格单位：每百万 tokens · <a href="/docs" target="_blank">API 文档</a>`;
   renderHead(); render();
+}
+
+async function loadDiscovery() {
+  const params = new URLSearchParams();
+  if ($('newsType').value) params.set('change_type', $('newsType').value);
+  if ($('newsStatus').value) params.set('status', $('newsStatus').value);
+  const data = await fetch('/v1/discovery?' + params).then(r => r.json());
+  $('newsCount').textContent = `共 ${data.count.toLocaleString('zh-CN')} 条`;
+  $('newsList').innerHTML = data.candidates.length ? data.candidates.map(item => {
+    const labels = {model_added:'模型上线', model_removed:'模型下线', price_changed:'价格调整', model_updated:'模型更新', news:'行业资讯'};
+    const statuses = {candidate:'待确认', verified:'已验证', rejected:'已忽略', applied:'已执行'};
+    const colors = {model_added:'conf-high', model_removed:'conf-low', price_changed:'conf-medium', model_updated:'b-manual', news:'b-manual'};
+    const published = item.published_at ? new Date(item.published_at).toLocaleString('zh-CN') : '发布时间未知';
+    return `<article class="news-item"><div class="news-top"><div><h3 class="news-title"><a href="${item.source_url}" target="_blank" rel="noopener">${item.title}</a></h3><div class="news-meta"><span>${item.provider}</span><span>${published}</span><span>${item.source_domain||new URL(item.source_url).hostname}</span></div></div><span class="badge candidate-status ${colors[item.change_type]||'b-manual'}">${statuses[item.status]||item.status}</span></div><p class="news-summary">${item.summary}</p><div class="news-meta"><span>变更类型：${labels[item.change_type]||item.change_type}</span><span>可信度：${item.confidence}</span>${item.model?`<span>模型：${item.model}</span>`:''}</div>${item.status==='candidate'?`<div class="news-actions"><button class="small-btn" data-news-verify="${item.id}" type="button">确认并验证</button><button class="danger-btn" data-news-reject="${item.id}" type="button">忽略</button></div>`:''}</article>`;
+  }).join('') : '<div class="news-empty">暂无变更资讯。可通过 discovery API 导入搜索结果或公告摘要。</div>';
+  document.querySelectorAll('[data-news-verify]').forEach(btn => btn.addEventListener('click', async () => { await fetch(`/v1/discovery/${btn.dataset.newsVerify}/verify`, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'}); loadDiscovery(); }));
+  document.querySelectorAll('[data-news-reject]').forEach(btn => btn.addEventListener('click', async () => { await fetch(`/v1/discovery/${btn.dataset.newsReject}/reject`, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'}); loadDiscovery(); }));
 }
 
 function setTab(t) {
   TAB = t;
   document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab===t));
-  // 官方 tab:显示置信度筛选、隐藏渠道/换算;其余相反
+  $('pricePanel').classList.toggle('active', t !== 'discovery');
+  $('discoveryPanel').classList.toggle('active', t === 'discovery');
+  if (t === 'discovery') { $('tabhint').textContent = '新闻与官方公告发现层：展示摘要、原文链接和待确认变更；确认前不会修改正式价格或模型状态。'; loadDiscovery(); return; }
+  // 官方价格显示可信度筛选；第三方/全部价格显示渠道和币种折算
   const official = t === 'official';
   $('confidence').style.display = official ? '' : 'none';
   $('channel').style.display = official ? 'none' : '';
   $('convert').style.display = official ? 'none' : '';
   sortKey = official ? 'provider' : 'provider';
   $('tabhint').textContent = official
-    ? '官方直营渠道定价,置信度 = 被多少个独立数据源交叉印证(高≥3源一致 / 中2源 / 低1源;⚠=官方源分歧待核)。'
+    ? '官方直营渠道价格；可信度表示有多少个独立数据源交叉验证（高：≥3 个，中：2 个，低：1 个；⚠ 表示官方数据存在差异）。'
     : (t==='unofficial'
-        ? '第三方托管/聚合平台(硅基流动 / OpenRouter / Bedrock / Azure 等)的渠道价,不计置信度。'
-        : '全部渠道价格(官方 + 非官方)。');
+        ? '第三方托管与聚合平台（硅基流动、OpenRouter、Bedrock、Azure 等）的渠道价格，不参与官方可信度评级。'
+        : '官方与第三方渠道的全部价格，可按厂商、地区和币种筛选。');
   load();
 }
+
+async function adminFetch(url, options={}) {
+  const r = await fetch(url, options);
+  if (r.status === 401) { openAdmin(); throw new Error('请先登录后台'); }
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function loadSources() {
+  const data = await adminFetch('/v1/sources');
+  const labels = {model_catalog:'第一层模型目录',pricing:'第二层官方价格',monitor:'第三层页面监控',rss:'第三层 RSS',announcement:'第三层公告'};
+  $('sourceList').innerHTML = data.sources.map(s => `<div class="webhook-item"><div class="webhook-info"><strong>${s.provider} · ${s.name}</strong><div class="webhook-url">${labels[s.kind]||s.kind} · ${s.agent} · ${s.url}</div></div><button class="danger-btn" data-source-delete="${s.id}">删除</button></div>`).join('');
+  document.querySelectorAll('[data-source-delete]').forEach(b=>b.addEventListener('click',async()=>{await adminFetch('/v1/sources/'+b.dataset.sourceDelete,{method:'DELETE'});loadSources();}));
+}
+async function loadWebhooks() {
+  const data = await adminFetch('/v1/webhooks');
+  $('webhookList').innerHTML = data.webhooks.length ? data.webhooks.map(w => `
+    <div class="webhook-item">
+      <div class="webhook-info"><strong>${w.name} ${w.enabled ? '· 已启用' : '· 已停用'}</strong><div class="webhook-url">${w.url} · ${w.has_secret ? '已启用签名' : '未设置签名'}</div></div>
+      <button class="small-btn" data-webhook-test="${w.id}" type="button">测试</button>
+      <button class="danger-btn" data-webhook-delete="${w.id}" type="button">删除</button>
+    </div>`).join('') : '<div class="muted">尚未配置 Webhook。</div>';
+  document.querySelectorAll('[data-webhook-test]').forEach(btn => btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    const result = await adminFetch(`/v1/webhooks/${btn.dataset.webhookTest}/test`, {method:'POST'});
+    alert(result.ok ? '测试通知发送成功' : `测试通知失败：${result.error||'请检查地址'}`);
+    btn.disabled = false;
+  }));
+  document.querySelectorAll('[data-webhook-delete]').forEach(btn => btn.addEventListener('click', async () => {
+    if (!confirm('确认删除这个 Webhook 配置？')) return;
+    await adminFetch(`/v1/webhooks/${btn.dataset.webhookDelete}`, {method:'DELETE'});
+    loadWebhooks();
+  }));
+}
+
+$('webhookForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const events = [...document.querySelectorAll('input[name="webhookEvent"]:checked')].map(x => x.value);
+  if (!events.length) return alert('请至少选择一种通知事件');
+  await adminFetch('/v1/webhooks', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+    name: $('webhookName').value.trim(), url: $('webhookUrl').value.trim(), secret: $('webhookSecret').value || null, events
+  }));
+  event.target.reset();
+  document.querySelectorAll('input[name="webhookEvent"]').forEach(x => x.checked = true);
+  loadWebhooks();
+});
+
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem('mph-theme', theme);
+  const light = theme === 'light';
+  $('themeToggle').title = light ? '切换到夜间模式' : '切换到日间模式';
+  $('themeToggle').setAttribute('aria-label', light ? '切换到夜间模式' : '切换到日间模式');
+}
+
+$('themeToggle').addEventListener('click', () => {
+  setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
+});
+setTheme(document.documentElement.dataset.theme || 'dark');
+
+const adminModal = $('adminModal');
+function openAdmin() { adminModal.classList.add('open'); document.body.style.overflow='hidden'; checkAdmin(); }
+function closeAdmin() { adminModal.classList.remove('open'); document.body.style.overflow=''; }
+async function checkAdmin() {
+  try { await adminFetch('/v1/admin/me'); $('adminLogin').style.display='none'; $('adminPanel').style.display='block'; loadPolicy(); loadApiKeys(); }
+  catch { $('adminLogin').style.display='block'; $('adminPanel').style.display='none'; }
+}
+async function loadPolicy() { const d=await adminFetch('/v1/admin/policy'); const p=d.policy; $('policyOfficial').checked=p.official_auto_apply; $('policyAgent').checked=p.agent_auto_review; $('policyLifecycle').checked=p.notify_model_lifecycle; $('policyPrice').checked=p.notify_price_changes; $('policyThird').checked=p.notify_third_party; $('policyFreeze').value=p.price_change_freeze_ratio; }
+async function loadApiKeys() { const d=await adminFetch('/v1/admin/api-keys'); $('apiKeyList').innerHTML=d.api_keys.map(k=>`<div class="webhook-item"><div class="webhook-info"><strong>${k.name} · ${k.enabled?'启用':'停用'}</strong><div class="webhook-url">${k.scopes.join('、')} · ${k.rate_limit_per_minute}/分钟 · ${k.created_at}</div></div><button class="danger-btn" data-key-delete="${k.id}">删除</button></div>`).join('')||'<div class="muted">尚未创建 API Key。</div>'; document.querySelectorAll('[data-key-delete]').forEach(b=>b.onclick=async()=>{await adminFetch('/v1/admin/api-keys/'+b.dataset.keyDelete,{method:'DELETE'});loadApiKeys();}); }
+$('adminOpen').addEventListener('click',openAdmin); $('adminClose').addEventListener('click',closeAdmin);
+$('loginForm').addEventListener('submit',async e=>{e.preventDefault(); await fetch('/v1/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('loginUser').value,password:$('loginPassword').value})}).then(async r=>{if(!r.ok) throw new Error(await r.text())}); checkAdmin();});
+$('logoutBtn').addEventListener('click',async()=>{await fetch('/v1/admin/logout',{method:'POST'});checkAdmin();});
+$('savePolicy').addEventListener('click',async()=>{await adminFetch('/v1/admin/policy',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({price_change_freeze_ratio:+$('policyFreeze').value||0.4,official_auto_apply:$('policyOfficial').checked,agent_auto_review:$('policyAgent').checked,notify_model_lifecycle:$('policyLifecycle').checked,notify_price_changes:$('policyPrice').checked,notify_third_party:$('policyThird').checked})});alert('策略已保存');});
+$('createApiKey').addEventListener('click',async()=>{const d=await adminFetch('/v1/admin/api-keys',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('apiKeyName').value||'API Key',scopes:[$('apiKeyScope').value]})});alert(`API Key（只显示一次）：\n${d.api_key}`);loadApiKeys();});
+
+const sourceModal = $('sourceModal');
+function openSources() { sourceModal.classList.add('open'); document.body.style.overflow='hidden'; loadSources().catch(e=>alert(e.message)); }
+function closeSources() { sourceModal.classList.remove('open'); document.body.style.overflow=''; }
+$('sourceOpen').addEventListener('click', openSources); $('sourceClose').addEventListener('click', closeSources);
+$('sourceForm').addEventListener('submit', async e => { e.preventDefault(); await adminFetch('/v1/sources',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:$('sourceProvider').value.trim(),name:$('sourceName').value.trim(),kind:$('sourceKind').value,agent:$('sourceAgent').value,url:$('sourceUrl').value.trim()})}); e.target.reset(); loadSources(); });
+const webhookModal = $('webhookModal');
+function openWebhookSettings() { webhookModal.classList.add('open'); document.body.style.overflow = 'hidden'; loadWebhooks().catch(e=>alert(e.message)); }
+function closeWebhookSettings() { webhookModal.classList.remove('open'); document.body.style.overflow = ''; }
+$('webhookOpen').addEventListener('click', openWebhookSettings);
+$('webhookClose').addEventListener('click', closeWebhookSettings);
+webhookModal.addEventListener('click', event => { if (event.target === webhookModal) closeWebhookSettings(); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && webhookModal.classList.contains('open')) closeWebhookSettings(); });
 
 async function initFilters() {
   const d = await (await fetch('/v1/providers')).json();
@@ -335,10 +658,19 @@ async function initFilters() {
 }
 
 document.querySelectorAll('.tab').forEach(el => el.addEventListener('click', () => setTab(el.dataset.tab)));
-['provider','channel','region','currency','confidence','convert'].forEach(id => $(id).addEventListener('change', load));
+$('newsType').addEventListener('change', loadDiscovery);
+$('newsStatus').addEventListener('change', loadDiscovery);
+$('refreshNews').addEventListener('click', loadDiscovery);
+$('runDiscovery').addEventListener('click', async () => {
+  const btn = $('runDiscovery'); btn.disabled = true; btn.textContent = '发现中…';
+  try { const result = await fetch('/v1/discovery/run', {method:'POST'}).then(r => r.json()); alert(`发现完成：抓取 ${result.fetched||0} 条，新内容 ${result.new_items||0} 条，候选 ${result.candidates||0} 条`); loadDiscovery(); }
+  catch (error) { alert(`发现失败：${error.message}`); }
+  finally { btn.disabled = false; btn.textContent = '运行发现'; }
+});
+['provider','channel','region','currency','serviceTier','modality','confidence','convert'].forEach(id => $(id).addEventListener('change', load));
 $('q').addEventListener('input', render);
 
-initFilters().then(() => setTab('official'));
+initFilters().then(() => { setTab('official'); loadWebhooks(); });
 </script>
 </body>
 </html>

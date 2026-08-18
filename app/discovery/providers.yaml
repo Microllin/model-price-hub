@@ -1,0 +1,59 @@
+# Discovery 来源配置。SearXNG 可选；RSS 和官方页面来源无需搜索服务。
+searxng:
+  enabled: true
+  base_url: "http://127.0.0.1:8088"
+  timeout: 12
+
+providers:
+  - id: openai
+    name: OpenAI
+    domains: [openai.com, platform.openai.com]
+    queries: ["site:openai.com (new model OR introducing OR deprecation OR pricing)", "site:platform.openai.com/docs/models"]
+    feeds:
+      - {id: openai-models, name: OpenAI 模型目录, source_tier: 1, url: https://developers.openai.com/api/docs/models}
+      - {id: openai-pricing, name: OpenAI 官方价格页, source_tier: 2, url: https://developers.openai.com/api/docs/pricing}
+  - id: anthropic
+    name: Anthropic
+    domains: [anthropic.com, docs.anthropic.com]
+    queries: ["site:anthropic.com (new model OR deprecation OR pricing)", "site:docs.anthropic.com (models OR deprecations)"]
+    feeds:
+      - {id: anthropic-news, name: Anthropic News, source_tier: 3, url: https://www.anthropic.com/news}
+      - {id: anthropic-models, name: Anthropic 模型文档, source_tier: 1, url: https://docs.anthropic.com/en/docs/about-claude/models}
+      - {id: anthropic-pricing, name: Anthropic 官方价格页, source_tier: 2, url: https://docs.anthropic.com/en/docs/about-claude/pricing}
+  - id: google
+    name: Google
+    domains: [blog.google, ai.google.dev, cloud.google.com]
+    queries: ["site:blog.google (Gemini OR model OR pricing)", "site:ai.google.dev (deprecation OR models)"]
+    feeds:
+      - {id: google-ai-blog, name: Google AI Blog, source_tier: 3, url: https://blog.google/technology/ai/rss/}
+      - {id: google-gemini-models, name: Gemini 官方模型页, source_tier: 1, url: https://ai.google.dev/gemini-api/docs/models}
+      - {id: google-gemini-pricing, name: Gemini 官方价格页, source_tier: 2, url: https://ai.google.dev/gemini-api/docs/pricing}
+  - id: xai
+    name: xAI
+    domains: [x.ai, docs.x.ai]
+    queries: ["Grok 4.6 xAI", "Grok model launch xAI", "site:docs.x.ai grok pricing", "site:docs.x.ai model retirement"]
+    feeds:
+      - {id: xai-news, name: xAI News, source_tier: 3, url: https://x.ai/news}
+      - {id: grok-46-docs, name: Grok 4.6 官方模型页, source_tier: 1, url: https://docs.x.ai/developers/models/grok-4.6}
+      - {id: grok-46-pricing, name: Grok 4.6 官方价格页, source_tier: 2, url: https://docs.x.ai/developers/pricing}
+      - {id: xai-models, name: xAI 官方模型页, source_tier: 1, url: https://docs.x.ai/developers/models}
+  - id: deepseek
+    name: DeepSeek
+    domains: [deepseek.com, api-docs.deepseek.com]
+    queries: ["site:deepseek.com (model OR pricing OR API)", "site:api-docs.deepseek.com (model OR pricing)"]
+    feeds:
+      - {id: deepseek-pricing, name: DeepSeek 官方价格页, source_tier: 2, url: https://api-docs.deepseek.com/quick_start/pricing}
+  - id: qwen
+    name: 通义千问
+    domains: [aliyun.com, help.aliyun.com]
+    queries: ["site:help.aliyun.com model studio pricing model"]
+    feeds:
+      - {id: qwen-models, name: 通义千问官方模型页, source_tier: 1, url: https://help.aliyun.com/zh/model-studio/models}
+      - {id: qwen-pricing, name: 通义千问官方价格页, source_tier: 2, url: https://help.aliyun.com/zh/model-studio/model-pricing}
+  - id: zhipu
+    name: 智谱
+    domains: [bigmodel.cn, open.bigmodel.cn, docs.bigmodel.cn]
+    queries: ["site:bigmodel.cn GLM 模型 价格 上线 下线"]
+    feeds:
+      - {id: glm-53-docs, name: GLM-5.3 官方模型页, url: https://docs.bigmodel.cn/cn/guide/models/text/glm-5.3}
+  # 可在这里添加官方 RSS/Atom：feeds: [{id: news, name: News, url: https://...}]

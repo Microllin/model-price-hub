@@ -28,11 +28,16 @@ def get_prices(
     currency: str | None = Query(None, pattern="^(USD|CNY)$"),
     official: bool | None = Query(None, description="true=仅官方渠道, false=仅非官方"),
     convert: str | None = Query(None, pattern="^(USD|CNY)$"),
+    service_tier: str | None = None,
+    modality: str | None = None,
+    billing_unit: str | None = None,
+    cache_state: str | None = None,
 ):
     entries = repo.filter_entries(
         repo.load_entries(),
         provider=provider, channel=channel, model=model,
-        region=region, currency=currency,
+        region=region, currency=currency, service_tier=service_tier,
+        modality=modality, billing_unit=billing_unit, cache_state=cache_state,
     )
     if official is not None:
         entries = [e for e in entries if e.official == official]
@@ -48,6 +53,8 @@ def get_official_prices(
     region: str | None = Query(None, pattern="^(cn|intl)$"),
     currency: str | None = Query(None, pattern="^(USD|CNY)$"),
     confidence: str | None = Query(None, pattern="^(high|medium|low)$"),
+    service_tier: str | None = None,
+    modality: str | None = None,
 ):
     """以模型为主体的官方价 + 多源交叉验证置信度。"""
     rows = official_prices(repo.load_entries())
@@ -61,6 +68,10 @@ def get_official_prices(
         rows = [r for r in rows if r["currency"] == currency]
     if confidence:
         rows = [r for r in rows if r["confidence"] == confidence]
+    if service_tier:
+        rows = [r for r in rows if r.get("service_tier") == service_tier]
+    if modality:
+        rows = [r for r in rows if r.get("modality") == modality]
     return {
         "data_date": repo.data_date(),
         "count": len(rows),

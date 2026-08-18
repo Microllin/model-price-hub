@@ -45,9 +45,10 @@ class AliyunScraper(BaseScraper):
         from playwright.async_api import async_playwright
 
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
+            browser = await p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"])
             try:
                 page = await browser.new_page(user_agent=settings.user_agent)
+                await self._prepare_page(page)
                 await page.goto(url, wait_until="domcontentloaded", timeout=60000)
                 await page.wait_for_timeout(6000)
                 return await page.inner_text("body")

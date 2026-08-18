@@ -5,9 +5,59 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
+    environment:
+      - MPH_ADMIN_USERNAME=${MPH_ADMIN_USERNAME:-admin}
+      - MPH_ADMIN_PASSWORD=${MPH_ADMIN_PASSWORD:-}
+      - MPH_ADMIN_COOKIE_SECURE=${MPH_ADMIN_COOKIE_SECURE:-false}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     # 轻量 FastAPI，1G 足够
     mem_limit: 1g
+
+  # 官方模型目录调度器：独立负责模型上线/下线
+  catalog:
+    build: .
+    command: python -m app.catalog.scheduler
+    volumes:
+      - ./data:/app/data
+      - ./app:/app/app:ro
+    environment:
+      - MPH_HTTP_PROXY=${MPH_HTTP_PROXY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'app.catalog.scheduler' >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 512m
+
+  # Discovery 新闻/公告调度器：每 6 小时运行，生成监控候选
+  discovery:
+    build: .
+    command: python -m app.discovery.scheduler
+    volumes:
+      - ./data:/app/data
+      - ./app/discovery:/app/app/discovery:ro
+    environment:
+      - MPH_DISCOVERY_DB_PATH=/app/data/discovery.db
+      - MPH_SEARXNG_URL=http://127.0.0.1:8088
+      - MPH_HTTP_PROXY=${MPH_HTTP_PROXY:-}
+    # SearXNG 仅绑定宿主 localhost；使用 host 网络而不对外开放搜索端口。
+    network_mode: host
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'app.discovery.scheduler' >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 512m
 
   # 容器内调度(每 3 天一次;也可用宿主 cron / k8s CronJob / GitHub Action 替代)
   scheduler:
@@ -21,6 +71,7 @@ services:
       - MPH_SCHEDULE_MINUTE=17
       - MPH_USE_PLAYWRIGHT=1
       - MPH_VISION_MODEL=claude-sonnet-4-6
+      - MPH_HTTP_PROXY=${MPH_HTTP_PROXY:-}
       # 视觉主源凭据(从环境/.env 传入;缺失则视觉源跳过、正则兜底)
       - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-}
       - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-}
@@ -29,6 +80,25 @@ services:
     # 硬性封顶 4G（含 swap，即不许用 swap 掩盖泄漏）：超限时只 kill 本容器并重启，绝不再拖垮宿主机。
     mem_limit: 4g
     memswap_limit: 4g
+    pids_limit: 256
+  agent:
+    build: .
+    command: python -m app.agents.worker
+    volumes:
+      - ./data:/app/data
+    environment:
+      - MPH_USE_PLAYWRIGHT=1
+      - MPH_HTTP_PROXY=${MPH_HTTP_PROXY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'app.agents.worker' >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 2g
+    pids_limit: 128
+
   updater:
     build: .
     command: python -m app.pipeline.runner
@@ -37,9 +107,11 @@ services:
     environment:
       - MPH_USE_PLAYWRIGHT=1
       - MPH_VISION_MODEL=claude-sonnet-4-6
+      - MPH_HTTP_PROXY=${MPH_HTTP_PROXY:-}
       - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-}
       - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-}
     profiles: ["manual"]
     # 与 scheduler 同一套 Playwright 抓取管线，同样封顶 4G
     mem_limit: 4g
     memswap_limit: 4g
+    pids_limit: 256

@@ -115,26 +115,32 @@ class VisionScraper(BaseScraper):
         if not _has_credentials():
             print(f"  [skip] {self.__class__.__name__}: 无视觉凭据(设 ANTHROPIC_AUTH_TOKEN 或 MPH_ANTHROPIC_API_KEY),跳过")
             return []
-        shots = await self._capture()
+        # 边截图边提取，不把长页面的所有 PNG 同时留在内存中。
         results: dict[str, RawPrice] = {}
-        for png in shots:
-            for r in self._extract(png):
-                results[r.model] = r  # 同名去重,后截的覆盖
+        async for png in self._capture():
+            try:
+                for r in self._extract(png):
+                    results[r.model] = r  # 同名去重,后截的覆盖
+            finally:
+                del png
         return list(results.values())
 
     # ---- 截图 ----
-    async def _capture(self) -> list[bytes]:
+    async def _capture(self):
         """滚动分段截【视口】图(不用全页截图——长页会卡在字体加载/被压糊)。
         screenshot_urls 非空时逐个 URL;否则截 source_url + 可选 tab 点击。"""
         from playwright.async_api import async_playwright
 
-        shots: list[bytes] = []
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+            )
             try:
                 page = await browser.new_page(
                     viewport={"width": 1200, "height": 1050}, user_agent=settings.user_agent
                 )
+                # 视觉抓取不能拦截图片：部分价格表本身由图片/canvas 提供。
                 urls = self.screenshot_urls or [self.source_url]
                 for url in urls:
                     try:
@@ -149,24 +155,23 @@ class VisionScraper(BaseScraper):
                                 await page.wait_for_timeout(2500)
                             except Exception:
                                 pass
-                        shots.extend(await self._scroll_shots(page))
+                        async for shot in self._scroll_shots(page):
+                            yield shot
             finally:
                 await browser.close()
-        return shots
 
-    async def _scroll_shots(self, page) -> list[bytes]:
-        out: list[bytes] = []
+    async def _scroll_shots(self, page):
         height = await page.evaluate("document.body.scrollHeight")
         y = 0
-        while y < max(height, 1) and len(out) < self.max_shots_per_page:
+        limit = min(self.max_shots_per_page, settings.vision_max_shots_per_page)
+        while y < max(height, 1) and y // 640 < limit:
             await page.evaluate(f"window.scrollTo(0,{y})")
             await page.wait_for_timeout(500)
             try:
-                out.append(await page.screenshot(timeout=15000))
+                yield await page.screenshot(timeout=15000)
             except Exception:
                 break
-            y += 640  # < 视口高(1050),块间重叠 ~40%,避免定价表被切在两块之间
-        return out
+            y += 640  # < 视口高(1050),块间重叠约 40%
 
     # ---- 视觉提取 ----
     def _extract(self, png: bytes) -> list[RawPrice]:

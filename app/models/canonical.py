@@ -25,8 +25,12 @@ _REGION_PREFIXES = {"us", "eu", "apac", "global", "au", "jp", "ca", "sa"}
 OFFICIAL_CHANNELS = {"official", "aliyun-bailian", "volcengine"}
 
 
-def is_official(channel: str) -> bool:
-    return channel in OFFICIAL_CHANNELS
+# 聚合源即使把上游 provider 映射成 official，也不能成为原厂官方证据。
+NON_OFFICIAL_SOURCES = {"litellm", "openrouter", "siliconflow", "ppio", "bedrock", "azure", "vertex"}
+
+
+def is_official(channel: str, source: str = "") -> bool:
+    return channel in OFFICIAL_CHANNELS and source not in NON_OFFICIAL_SOURCES
 
 
 def canonicalize(model: str) -> str:

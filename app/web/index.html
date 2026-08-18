@@ -194,15 +194,14 @@
   .caret { display: inline-block; margin-right: 5px; color: var(--faint); font-size: 10px; transition: transform .15s; }
   tr.group-row.open .caret { transform: rotate(90deg); color: var(--accent); }
   .var-count { margin-left: 6px; font-size: 10.5px; font-weight: 700; color: var(--accent); }
-  .detail-row, .detail-row td, .detail-row td:first-child { position: static; background: var(--surface-2); box-shadow: none; }
-  .detail-row:hover, .detail-row:hover td:first-child { background: var(--surface-2); }
-  .detail-cell { white-space: normal; overflow: visible; padding: 2px 16px 8px; height: auto; }
-  .variant { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 7px 4px; border-top: 1px dashed var(--line); }
-  .variant:first-child { border-top: 0; }
-  .variant .vprices { font-variant-numeric: tabular-nums; }
-  .variant .vsrc { color: var(--faint); font-size: 11px; }
-  .detail-cell .badge { font-size: 10.5px; padding: 1px 7px; }
-  .detail-cell .badge.std { color: var(--faint); }
+  .main-cond { margin-left: 6px; font-size: 10px; color: var(--muted); font-weight: 400; }
+  /* 抽屉行与主表同列对齐:条件徽章收在第一列,价格列一一对应 */
+  .variant-row td { background: var(--surface-2); font-size: 11.5px; height: auto; min-height: 30px; padding-top: 5px; padding-bottom: 5px; }
+  .variant-row td:first-child { background: var(--surface-2); padding-left: 24px; white-space: normal; line-height: 1.9; }
+  .variant-row:hover, .variant-row:hover td, .variant-row:hover td:first-child { background: var(--surface-2); }
+  .variant-row .badge { font-size: 10px; padding: 1px 7px; }
+  .variant-row .badge.std { color: var(--faint); }
+  .variant-row .model { display: none; }
   .model { display: inline-block; max-width: 175px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; font-weight: 600; color: var(--fg); }
 
   /* ---- badges ---- */
@@ -373,7 +372,7 @@ const visionTag = r => (r.via_vision || (r.source||'').startsWith('vision-'))
 const COLS = {
   // 官方 tab:按模型聚合的紧凑列(主行=标准价,其余价格条件展开可见)
   official: [
-    {k:'canonical_model', t:'模型 ID', render:r=>`${r._extra?`<span class="caret">▶</span>`:'<span class="caret"></span>'}<span class="model" title="${r.canonical_model}">${r.canonical_model}</span>${visionTag(r)}${r._extra?`<span class="var-count">+${r._extra}</span>`:''}`},
+    {k:'canonical_model', t:'模型 ID', render:r=>`${r._extra?`<span class="caret">▶</span>`:'<span class="caret"></span>'}<span class="model" title="${r.canonical_model}">${r.canonical_model}</span>${visionTag(r)}${r._extra?`<span class="var-count">+${r._extra}</span>`:''}${r._condHint||''}`},
     {k:'provider', t:'厂商'},
     {k:'currency', t:'货币', render:r=>curBadge(r.currency)},
     {k:'input_per_1m', t:'输入 /1M', num:true, render:r=>fmt(r.input_per_1m)},
@@ -425,19 +424,37 @@ function groupOfficial(rows) {
   return [...map.entries()].map(([key, variants]) => ({ key, variants, main: variants.find(isStdRow) || variants[0] }));
 }
 
-function variantLine(v) {
-  const conds = [];
+function condBadges(v) {
+  const b = [];
   const tier = v.service_tier || 'standard';
-  conds.push(`<span class="badge ${tier==='standard'?'std':'b-manual'}">${tier}</span>`);
-  if (v.modality && v.modality !== 'text') conds.push(`<span class="badge">${v.modality}</span>`);
-  if (v.cache_state) conds.push(`<span class="badge">缓存 ${v.cache_state}</span>`);
-  if (v.context_range) conds.push(`<span class="badge">上下文 ${v.context_range}</span>`);
-  if (v.time_window) conds.push(`<span class="badge">时段 ${windowText(v)}</span>`);
-  const prices = [`输入 ${fmt(v.input_per_1m)}`, `输出 ${fmt(v.output_per_1m)}`];
-  if (v.cached_input_per_1m != null) prices.push(`缓存读 ${fmt(v.cached_input_per_1m)}`);
-  if (v.cache_write_per_1m != null) prices.push(`缓存写 ${fmt(v.cache_write_per_1m)}`);
-  const src = `${v.primary_source||''}${v.source_url?` <a href="${v.source_url}" target="_blank" rel="noopener">↗</a>`:''}`;
-  return `<div class="variant"><span>${conds.join(' ')}</span><span class="vprices">${prices.join(' · ')}</span><span class="vsrc">${src}</span></div>`;
+  if (tier !== 'standard') b.push(`<span class="badge b-manual">${tier}</span>`);
+  if (v.modality && v.modality !== 'text') b.push(`<span class="badge">${v.modality}</span>`);
+  if (v.cache_state) b.push(`<span class="badge">缓存 ${v.cache_state}</span>`);
+  if (v.context_range) b.push(`<span class="badge">上下文 ${v.context_range}</span>`);
+  if (v.time_window) b.push(`<span class="badge">时段 ${windowText(v)}</span>`);
+  if (!b.length) b.push('<span class="badge std">standard</span>');
+  return b.join(' ');
+}
+
+// 抽屉行:与主表同列渲染(价格/置信度/来源列一一对应),首列换成条件徽章
+function variantRow(v, cs) {
+  const tds = cs.map((c, i) => {
+    if (i === 0) return `<td>${condBadges(v)}</td>`;
+    return `<td class="${c.num?'num':''}">${c.render ? c.render(v) : (v[c.k] ?? '')}</td>`;
+  }).join('');
+  return `<tr class="variant-row">${tds}</tr>`;
+}
+
+// 主行代表价带条件时(如无标准价的纯分档模型),在模型名后标注主行条件
+function mainCondHint(r) {
+  if (isStdRow(r)) return '';
+  const parts = [];
+  const tier = r.service_tier || 'standard';
+  if (tier !== 'standard' && !(tier === 'scheduled' && r.time_window)) parts.push(tier);
+  if (r.cache_state) parts.push(`缓存 ${r.cache_state}`);
+  if (r.context_range) parts.push(r.context_range);
+  if (r.time_window) parts.push('分时段');
+  return parts.length ? `<span class="main-cond" title="主行展示的是该条件下的价格">${parts.join(' · ')}</span>` : '';
 }
 
 function render() {
@@ -459,13 +476,15 @@ function render() {
     $('empty').style.display = groups.length ? 'none' : 'block';
     $('rows').innerHTML = groups.map(g => {
       const open = EXPANDED.has(g.key);
-      const main = {...g.main, _extra: g.variants.length - 1};
+      const others = g.variants.filter(v => v !== g.main);
+      const main = {...g.main, _extra: others.length, _condHint: mainCondHint(g.main)};
       const tds = cs.map(c => `<td class="${c.num?'num':''}">${c.render?c.render(main):(main[c.k]??'')}</td>`).join('');
-      const detail = open ? `<tr class="detail-row"><td class="detail-cell" colspan="${cs.length}">${g.variants.map(variantLine).join('')}</td></tr>` : '';
+      const detail = open ? others.map(v => variantRow(v, cs)).join('') : '';
       return `<tr class="group-row${open?' open':''}" data-group="${g.key}">${tds}</tr>${detail}`;
     }).join('');
     $('rows').querySelectorAll('tr.group-row').forEach(tr => tr.addEventListener('click', ev => {
       if (ev.target.closest('a')) return;  // 点来源链接不触发展开
+      if (!tr.querySelector('.var-count')) return;  // 无额外条件的模型不可展开
       const key = tr.dataset.group;
       if (!key) return;
       EXPANDED.has(key) ? EXPANDED.delete(key) : EXPANDED.add(key);

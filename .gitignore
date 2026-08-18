@@ -1,6 +1,7 @@
 # ===== 敏感凭据(绝不入库)=====
 .env
 .env.*
+!.env.example
 *.env
 secrets.*
 *credential*
@@ -22,6 +23,20 @@ venv/
 # 运行期数据:DB 不入库;快照与 latest.json 入库(历史/审计/API 兜底)
 data/prices.db
 data/prices.db-*
+data/catalog.db
+data/discovery.db
+data/agent-tasks.json
+data/agent-approvals.json
+data/agent-evidence/
+data/sources.json
+data/webhooks.json
+data/webhook-removal-state.json
+data/pipeline-health.json
+data/pipeline-health.lock
+data/admin.json
+data/admin-sessions.json
+data/api-keys.json
+data/policy.json
 
 # 调试/临时
 /tmp/

@@ -72,7 +72,8 @@ docker compose up -d --build api catalog discovery agent
 打开：
 
 ```text
-http://127.0.0.1:8000/
+http://127.0.0.1:8000/        前台价格页
+http://127.0.0.1:8000/admin   后台管理（需登录）
 ```
 
 手动全量抓取价格：
@@ -90,6 +91,27 @@ pip install -e ".[dev,vision]"
 python -m playwright install chromium
 pytest
 uvicorn app.main:app --reload
+```
+
+## 后台管理
+
+后台与前台分离，独立页面 `/admin`，需管理员登录（会话 Cookie，12 小时有效，连续 5 次登录失败锁定 10 分钟）。
+
+| 模块 | 能力 |
+|---|---|
+| 概览 | 服务状态、价格管线与模型目录健康 |
+| 策略配置 | 冻结阈值、官方自动生效、Agent 复核、通知开关、调度间隔、API 访问开关，保存即生效 |
+| 数据源 | 官方来源增删改、启用/停用、解析方式（HTML/OCR/页面差异/上下文研判） |
+| Webhook | 飞书 Interactive Card / 标准 JSON，事件订阅与在线测试 |
+| API Key | 创建（仅显示一次）、启用/停用、每分钟限流、最近使用时间 |
+| 账号 | 修改管理员密码（更新后全部会话失效） |
+
+首次使用需通过环境变量设置管理员账号：`MPH_ADMIN_USERNAME` / `MPH_ADMIN_PASSWORD`。
+
+开启策略 `api_key_required` 后，只读查询 API 需携带请求头：
+
+```bash
+curl -H "X-API-Key: mph_…" http://127.0.0.1:8000/v1/prices
 ```
 
 ## API
@@ -117,6 +139,9 @@ uvicorn app.main:app --reload
 
 | 变量 | 说明 |
 |---|---|
+| `MPH_ADMIN_USERNAME` | 后台管理员账号（默认 `admin`） |
+| `MPH_ADMIN_PASSWORD` | 后台管理员初始密码（不设置则禁用登录） |
+| `MPH_ADMIN_COOKIE_SECURE` | HTTPS 部署时置 `true` |
 | `MPH_HTTP_PROXY` | 可选出站代理 |
 | `MPH_USE_PLAYWRIGHT` | 启用浏览器渲染 |
 | `MPH_RENDER_CONCURRENCY` | 浏览器并发上限 |

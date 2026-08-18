@@ -1,8 +1,9 @@
 """历史快照查询路由。"""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.api.admin import require_api_key
 from app.config import settings
 from app.models.pricing import Snapshot
 
@@ -10,13 +11,13 @@ router = APIRouter(prefix="/v1/snapshots", tags=["snapshots"])
 
 
 @router.get("")
-def list_snapshots():
+def list_snapshots(_key: dict | None = Depends(require_api_key)):
     dates = sorted(p.stem for p in settings.snapshots_dir.glob("*.json"))
     return {"count": len(dates), "dates": dates}
 
 
 @router.get("/{date}")
-def get_snapshot(date: str):
+def get_snapshot(date: str, _key: dict | None = Depends(require_api_key)):
     p = settings.snapshots_dir / f"{date}.json"
     if not p.exists():
         raise HTTPException(status_code=404, detail=f"无快照 {date}")

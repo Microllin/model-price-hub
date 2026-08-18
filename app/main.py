@@ -71,8 +71,14 @@ def api_info():
 
 @app.get("/", include_in_schema=False)
 def web_ui():
-    """价格浏览页(单页 Web UI)。"""
+    """价格浏览页(前台单页 Web UI)。"""
     return FileResponse(WEB_DIR / "index.html")
+
+
+@app.get("/admin", include_in_schema=False)
+def admin_ui():
+    """后台管理页(需登录;与前台分离的独立页面)。"""
+    return FileResponse(WEB_DIR / "admin.html")
 
 
 @app.get("/favicon.svg", include_in_schema=False)

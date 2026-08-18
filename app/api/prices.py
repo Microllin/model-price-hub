@@ -1,9 +1,10 @@
 """价格查询路由。"""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api import repository as repo
+from app.api.admin import require_api_key
 from app.api.confidence import official_prices
 from app.config import settings
 from app.models.pricing import PriceEntry
@@ -28,6 +29,7 @@ def get_prices(
     currency: str | None = Query(None, pattern="^(USD|CNY)$"),
     official: bool | None = Query(None, description="true=仅官方渠道, false=仅非官方"),
     convert: str | None = Query(None, pattern="^(USD|CNY)$"),
+    _key: dict | None = Depends(require_api_key),
     service_tier: str | None = None,
     modality: str | None = None,
     billing_unit: str | None = None,
@@ -55,6 +57,7 @@ def get_official_prices(
     confidence: str | None = Query(None, pattern="^(high|medium|low)$"),
     service_tier: str | None = None,
     modality: str | None = None,
+    _key: dict | None = Depends(require_api_key),
 ):
     """以模型为主体的官方价 + 多源交叉验证置信度。"""
     rows = official_prices(repo.load_entries())
@@ -81,7 +84,7 @@ def get_official_prices(
 
 
 @router.get("/prices/{provider}/{model}")
-def get_model_prices(provider: str, model: str):
+def get_model_prices(provider: str, model: str, _key: dict | None = Depends(require_api_key)):
     """某模型的全部渠道/货币变体。"""
     entries = repo.filter_entries(repo.load_entries(), provider=provider)
     entries = [e for e in entries if e.model == model]
@@ -91,7 +94,7 @@ def get_model_prices(provider: str, model: str):
 
 
 @router.get("/providers")
-def list_providers():
+def list_providers(_key: dict | None = Depends(require_api_key)):
     entries = repo.load_entries()
     out: dict[str, set[str]] = {}
     for e in entries:
@@ -105,7 +108,7 @@ def list_providers():
 
 
 @router.get("/models")
-def list_models(provider: str | None = None):
+def list_models(provider: str | None = None, _key: dict | None = Depends(require_api_key)):
     entries = repo.filter_entries(repo.load_entries(), provider=provider)
     out: dict[tuple[str, str], dict] = {}
     for e in entries:

@@ -216,44 +216,12 @@
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
   .empty { padding: 56px; text-align: center; color: var(--muted); }
-  .settings-card { margin-top: 16px; padding: 20px; }
-  .settings-modal { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(2,7,5,.74); backdrop-filter: blur(10px); }
-  .settings-modal.open { display: flex; }
-  .settings-dialog { width: min(720px, 100%); max-height: min(820px, 92vh); overflow: auto; padding: 28px; border: 1px solid rgba(53,232,138,.24); border-radius: 20px; background: var(--surface); box-shadow: 0 24px 80px rgba(0,0,0,.42), 0 0 40px rgba(53,232,138,.08); }
-  .dialog-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
-  .dialog-title h2 { margin: 0; font-size: 22px; letter-spacing: -.3px; }
-  .dialog-title p { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
-  .close-btn { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: 9px; color: var(--muted); background: transparent; cursor: pointer; }
-  .close-btn:hover { color: var(--accent); border-color: var(--accent); }
-  .dialog-section { padding: 18px 0; border-top: 1px solid var(--line); }
-  .dialog-section:first-of-type { border-top: 0; padding-top: 0; }
-  .dialog-section h3 { margin: 0 0 12px; font-size: 13px; }
-  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .field { display: grid; gap: 6px; }
-  .field.full { grid-column: 1 / -1; }
-  .field label { color: var(--muted); font-size: 12px; font-weight: 600; }
-  .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
-  .ghost-btn { height: 36px; padding: 0 14px; border: 1px solid var(--line-2); border-radius: 9px; color: var(--fg); background: transparent; cursor: pointer; font: inherit; }
-  .ghost-btn:hover { border-color: var(--accent); color: var(--accent); }
-  @media (max-width: 760px) { header { padding: 22px 18px 16px; } main { padding: 8px 12px 32px; } .field-grid { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .header-actions { gap: 5px; } .settings-dialog { padding: 22px; } .toolbar { gap: 5px; padding: 9px; } .toolbar .ctrl { flex: 1 1 145px; min-width: 145px; } input.search { min-width: 100%; flex-basis: 100%; max-width: none; } th, td { height: 36px; padding: 5px 7px; font-size: 11px; } .wrap { max-height: calc(100vh - 285px); } }
-  .settings-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-  .settings-head h2 { margin: 0; font-size: 16px; }
-  .settings-note { color: var(--muted); font-size: 12px; }
-  .webhook-form { display: block; }
-  .check-list { display: flex; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: 12px; }
-  .check-list label { display: inline-flex; gap: 4px; align-items: center; }
+  @media (max-width: 760px) { header { padding: 22px 18px 16px; } main { padding: 8px 12px 32px; } .header-actions { gap: 5px; } .toolbar { gap: 5px; padding: 9px; } .toolbar .ctrl { flex: 1 1 145px; min-width: 145px; } input.search { min-width: 100%; flex-basis: 100%; max-width: none; } th, td { height: 36px; padding: 5px 7px; font-size: 11px; } .wrap { max-height: calc(100vh - 285px); } }
   .primary-btn, .danger-btn, .small-btn { min-width: 76px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 0 11px; cursor: pointer; font: inherit; line-height: 1; white-space: nowrap; }
   .primary-btn { color: #06130d; background: var(--accent); border: 1px solid var(--accent); font-weight: 700; box-shadow: 0 3px 12px rgba(53,232,138,.18); }
   .danger-btn { color: var(--lo); background: transparent; border: 1px solid currentColor; }
   .small-btn { color: var(--fg); background: var(--surface-2); border: 1px solid var(--line-2); font-size: 12px; }
   .small-btn:hover { color: var(--accent); border-color: var(--accent); }
-  .webhook-list { display: grid; gap: 9px; margin-top: 16px; }
-  .webhook-list:empty { display: none; }
-  .webhook-item { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
-  .webhook-info { min-width: 0; flex: 1; }
-  .webhook-info strong { display: block; }
-  .webhook-url { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-  @media (max-width: 760px) { .webhook-item { align-items: flex-start; flex-wrap: wrap; } }
 </style>
 <script>
   (() => {
@@ -272,9 +240,7 @@
     <div class="sub" id="meta">正在加载价格数据…</div>
   </div>
   <div class="header-actions">
-    <button class="icon-btn" id="adminOpen" type="button" aria-label="后台管理" title="后台管理">⚙</button>
-    <button class="icon-btn" id="sourceOpen" type="button" aria-label="官方来源与 Agent 设置" title="官方来源与 Agent 设置">◎</button>
-    <button class="icon-btn" id="webhookOpen" type="button" aria-label="打开 Webhook 设置" title="Webhook 设置"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M10.6 13.4a4.5 4.5 0 0 0 6.4.1l2-2a4.5 4.5 0 0 0-6.4-6.4l-1.1 1.1"/><path d="M13.4 10.6a4.5 4.5 0 0 0-6.4-.1l-2 2a4.5 4.5 0 0 0 6.4 6.4l1.1-1.1"/></svg></button>
+    <a class="icon-btn" href="/admin" aria-label="后台管理" title="后台管理（独立页面，需登录）">⚙</a>
     <button class="icon-btn" id="themeToggle" type="button" aria-label="切换到日间模式" title="切换主题"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
   </div>
 </header>
@@ -358,54 +324,6 @@
   </div>
 
 </main>
-
-<div class="settings-modal" id="adminModal" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
-  <div class="settings-dialog">
-    <div class="dialog-title"><div><h2 id="adminTitle">后台管理</h2><p>管理员登录后管理通知、数据来源、策略和 API Key。</p></div><button class="close-btn" id="adminClose" type="button">×</button></div>
-    <div id="adminLogin"><form id="loginForm"><div class="field-grid"><input class="ctrl" id="loginUser" placeholder="管理员账号" autocomplete="username" required /><input class="ctrl" id="loginPassword" type="password" placeholder="管理员密码" autocomplete="current-password" required /></div><div class="dialog-actions"><button class="primary-btn" type="submit">登录</button></div></form></div>
-    <div id="adminPanel" style="display:none">
-      <div class="dialog-section"><h3>策略</h3><div class="field-grid"><label><input type="checkbox" id="policyOfficial" checked /> 官方自动执行</label><label><input type="checkbox" id="policyAgent" checked /> Agent 自动复核</label><label><input type="checkbox" id="policyLifecycle" checked /> 模型上下线通知</label><label><input type="checkbox" id="policyPrice" checked /> 价格变化通知</label><label><input type="checkbox" id="policyThird" /> 第三方通知</label><input class="ctrl" id="policyFreeze" type="number" step="0.01" min="0" placeholder="第三方冻结阈值" /></div><div class="dialog-actions"><button class="primary-btn" id="savePolicy" type="button">保存策略</button></div></div>
-      <div class="dialog-section"><h3>API Key</h3><div class="field-grid"><input class="ctrl" id="apiKeyName" placeholder="Key 名称" /><select class="ctrl" id="apiKeyScope"><option value="read">只读</option><option value="write">写入</option><option value="admin">管理</option></select></div><div class="dialog-actions"><button class="primary-btn" id="createApiKey" type="button">创建 API Key</button></div><div class="webhook-list" id="apiKeyList"></div></div>
-      <div class="dialog-actions"><button class="danger-btn" id="logoutBtn" type="button">退出登录</button></div>
-    </div>
-  </div>
-</div>
-
-<div class="settings-modal" id="sourceModal" role="dialog" aria-modal="true" aria-labelledby="sourceTitle">
-  <div class="settings-dialog">
-    <div class="dialog-title"><div><h2 id="sourceTitle">官方来源与 Agent</h2><p>第一层模型目录、第二层价格页、第三层监控页分别配置；Agent 处理 OCR、页面差异和上下文研判。</p></div><button class="close-btn" id="sourceClose" type="button">×</button></div>
-    <form id="sourceForm"><div class="field-grid">
-      <input class="ctrl" id="sourceProvider" placeholder="厂商，例如 deepseek" required />
-      <input class="ctrl" id="sourceName" placeholder="来源名称" required />
-      <select class="ctrl" id="sourceKind"><option value="model_catalog">第一层 · 官方模型目录</option><option value="pricing">第二层 · 官方价格页</option><option value="monitor">第三层 · 页面监控</option><option value="rss">第三层 · RSS</option><option value="announcement">第三层 · 公告</option></select>
-      <select class="ctrl" id="sourceAgent"><option value="html_extract">HTML 解析</option><option value="ocr">Agent OCR</option><option value="page_diff">页面差异 Agent</option><option value="context_review">上下文研判 Agent</option></select>
-      <input class="ctrl full" id="sourceUrl" type="url" placeholder="官方页面 URL" required />
-    </div><div class="dialog-actions"><button class="primary-btn" type="submit">添加官方来源</button></div></form>
-    <div class="dialog-section"><h3>已配置来源</h3><div class="webhook-list" id="sourceList"></div></div>
-  </div>
-</div>
-
-<div class="settings-modal" id="webhookModal" role="dialog" aria-modal="true" aria-labelledby="webhookTitle">
-  <div class="settings-dialog">
-    <div class="dialog-title">
-      <div><h2 id="webhookTitle">Webhook 通知中心</h2><p>管理价格变动、模型上线与下线通知。支持飞书及标准 JSON Webhook。</p></div>
-      <button class="close-btn" id="webhookClose" type="button" aria-label="关闭设置"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-    </div>
-    <form id="webhookForm">
-      <div class="dialog-section">
-        <h3>添加通知端点</h3>
-        <div class="field-grid">
-          <div class="field"><label for="webhookName">配置名称</label><input class="ctrl" id="webhookName" placeholder="例如：飞书 · 价格监控" required /></div>
-          <div class="field"><label for="webhookSecret">签名密钥（可选）</label><input class="ctrl" id="webhookSecret" type="password" placeholder="不会在页面回显" autocomplete="new-password" /></div>
-          <div class="field full"><label for="webhookUrl">Webhook 地址</label><input class="ctrl" id="webhookUrl" type="url" placeholder="https://内网地址/webhook" required /></div>
-        </div>
-        <div class="check-list" style="margin-top:14px"><label><input type="checkbox" name="webhookEvent" value="price_changed" checked />价格变动</label><label><input type="checkbox" name="webhookEvent" value="model_added" checked />模型上线</label><label><input type="checkbox" name="webhookEvent" value="model_removed" checked />模型下线</label></div>
-        <div class="dialog-actions"><button class="primary-btn" type="submit">保存配置</button></div>
-      </div>
-    </form>
-    <div class="dialog-section"><h3>已配置端点</h3><div class="webhook-list" id="webhookList"><div class="muted">正在加载 Webhook 配置…</div></div></div>
-  </div>
-</div>
 
 <script>
 let ALL = [];
@@ -560,52 +478,6 @@ function setTab(t) {
   load();
 }
 
-async function adminFetch(url, options={}) {
-  const r = await fetch(url, options);
-  if (r.status === 401) { openAdmin(); throw new Error('请先登录后台'); }
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-
-async function loadSources() {
-  const data = await adminFetch('/v1/sources');
-  const labels = {model_catalog:'第一层模型目录',pricing:'第二层官方价格',monitor:'第三层页面监控',rss:'第三层 RSS',announcement:'第三层公告'};
-  $('sourceList').innerHTML = data.sources.map(s => `<div class="webhook-item"><div class="webhook-info"><strong>${s.provider} · ${s.name}</strong><div class="webhook-url">${labels[s.kind]||s.kind} · ${s.agent} · ${s.url}</div></div><button class="danger-btn" data-source-delete="${s.id}">删除</button></div>`).join('');
-  document.querySelectorAll('[data-source-delete]').forEach(b=>b.addEventListener('click',async()=>{await adminFetch('/v1/sources/'+b.dataset.sourceDelete,{method:'DELETE'});loadSources();}));
-}
-async function loadWebhooks() {
-  const data = await adminFetch('/v1/webhooks');
-  $('webhookList').innerHTML = data.webhooks.length ? data.webhooks.map(w => `
-    <div class="webhook-item">
-      <div class="webhook-info"><strong>${w.name} ${w.enabled ? '· 已启用' : '· 已停用'}</strong><div class="webhook-url">${w.url} · ${w.has_secret ? '已启用签名' : '未设置签名'}</div></div>
-      <button class="small-btn" data-webhook-test="${w.id}" type="button">测试</button>
-      <button class="danger-btn" data-webhook-delete="${w.id}" type="button">删除</button>
-    </div>`).join('') : '<div class="muted">尚未配置 Webhook。</div>';
-  document.querySelectorAll('[data-webhook-test]').forEach(btn => btn.addEventListener('click', async () => {
-    btn.disabled = true;
-    const result = await adminFetch(`/v1/webhooks/${btn.dataset.webhookTest}/test`, {method:'POST'});
-    alert(result.ok ? '测试通知发送成功' : `测试通知失败：${result.error||'请检查地址'}`);
-    btn.disabled = false;
-  }));
-  document.querySelectorAll('[data-webhook-delete]').forEach(btn => btn.addEventListener('click', async () => {
-    if (!confirm('确认删除这个 Webhook 配置？')) return;
-    await adminFetch(`/v1/webhooks/${btn.dataset.webhookDelete}`, {method:'DELETE'});
-    loadWebhooks();
-  }));
-}
-
-$('webhookForm').addEventListener('submit', async event => {
-  event.preventDefault();
-  const events = [...document.querySelectorAll('input[name="webhookEvent"]:checked')].map(x => x.value);
-  if (!events.length) return alert('请至少选择一种通知事件');
-  await adminFetch('/v1/webhooks', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
-    name: $('webhookName').value.trim(), url: $('webhookUrl').value.trim(), secret: $('webhookSecret').value || null, events
-  }));
-  event.target.reset();
-  document.querySelectorAll('input[name="webhookEvent"]').forEach(x => x.checked = true);
-  loadWebhooks();
-});
-
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
   localStorage.setItem('mph-theme', theme);
@@ -618,34 +490,6 @@ $('themeToggle').addEventListener('click', () => {
   setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
 });
 setTheme(document.documentElement.dataset.theme || 'dark');
-
-const adminModal = $('adminModal');
-function openAdmin() { adminModal.classList.add('open'); document.body.style.overflow='hidden'; checkAdmin(); }
-function closeAdmin() { adminModal.classList.remove('open'); document.body.style.overflow=''; }
-async function checkAdmin() {
-  try { await adminFetch('/v1/admin/me'); $('adminLogin').style.display='none'; $('adminPanel').style.display='block'; loadPolicy(); loadApiKeys(); }
-  catch { $('adminLogin').style.display='block'; $('adminPanel').style.display='none'; }
-}
-async function loadPolicy() { const d=await adminFetch('/v1/admin/policy'); const p=d.policy; $('policyOfficial').checked=p.official_auto_apply; $('policyAgent').checked=p.agent_auto_review; $('policyLifecycle').checked=p.notify_model_lifecycle; $('policyPrice').checked=p.notify_price_changes; $('policyThird').checked=p.notify_third_party; $('policyFreeze').value=p.price_change_freeze_ratio; }
-async function loadApiKeys() { const d=await adminFetch('/v1/admin/api-keys'); $('apiKeyList').innerHTML=d.api_keys.map(k=>`<div class="webhook-item"><div class="webhook-info"><strong>${k.name} · ${k.enabled?'启用':'停用'}</strong><div class="webhook-url">${k.scopes.join('、')} · ${k.rate_limit_per_minute}/分钟 · ${k.created_at}</div></div><button class="danger-btn" data-key-delete="${k.id}">删除</button></div>`).join('')||'<div class="muted">尚未创建 API Key。</div>'; document.querySelectorAll('[data-key-delete]').forEach(b=>b.onclick=async()=>{await adminFetch('/v1/admin/api-keys/'+b.dataset.keyDelete,{method:'DELETE'});loadApiKeys();}); }
-$('adminOpen').addEventListener('click',openAdmin); $('adminClose').addEventListener('click',closeAdmin);
-$('loginForm').addEventListener('submit',async e=>{e.preventDefault(); await fetch('/v1/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('loginUser').value,password:$('loginPassword').value})}).then(async r=>{if(!r.ok) throw new Error(await r.text())}); checkAdmin();});
-$('logoutBtn').addEventListener('click',async()=>{await fetch('/v1/admin/logout',{method:'POST'});checkAdmin();});
-$('savePolicy').addEventListener('click',async()=>{await adminFetch('/v1/admin/policy',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({price_change_freeze_ratio:+$('policyFreeze').value||0.4,official_auto_apply:$('policyOfficial').checked,agent_auto_review:$('policyAgent').checked,notify_model_lifecycle:$('policyLifecycle').checked,notify_price_changes:$('policyPrice').checked,notify_third_party:$('policyThird').checked})});alert('策略已保存');});
-$('createApiKey').addEventListener('click',async()=>{const d=await adminFetch('/v1/admin/api-keys',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('apiKeyName').value||'API Key',scopes:[$('apiKeyScope').value]})});alert(`API Key（只显示一次）：\n${d.api_key}`);loadApiKeys();});
-
-const sourceModal = $('sourceModal');
-function openSources() { sourceModal.classList.add('open'); document.body.style.overflow='hidden'; loadSources().catch(e=>alert(e.message)); }
-function closeSources() { sourceModal.classList.remove('open'); document.body.style.overflow=''; }
-$('sourceOpen').addEventListener('click', openSources); $('sourceClose').addEventListener('click', closeSources);
-$('sourceForm').addEventListener('submit', async e => { e.preventDefault(); await adminFetch('/v1/sources',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:$('sourceProvider').value.trim(),name:$('sourceName').value.trim(),kind:$('sourceKind').value,agent:$('sourceAgent').value,url:$('sourceUrl').value.trim()})}); e.target.reset(); loadSources(); });
-const webhookModal = $('webhookModal');
-function openWebhookSettings() { webhookModal.classList.add('open'); document.body.style.overflow = 'hidden'; loadWebhooks().catch(e=>alert(e.message)); }
-function closeWebhookSettings() { webhookModal.classList.remove('open'); document.body.style.overflow = ''; }
-$('webhookOpen').addEventListener('click', openWebhookSettings);
-$('webhookClose').addEventListener('click', closeWebhookSettings);
-webhookModal.addEventListener('click', event => { if (event.target === webhookModal) closeWebhookSettings(); });
-document.addEventListener('keydown', event => { if (event.key === 'Escape' && webhookModal.classList.contains('open')) closeWebhookSettings(); });
 
 async function initFilters() {
   const d = await (await fetch('/v1/providers')).json();
@@ -670,7 +514,7 @@ $('runDiscovery').addEventListener('click', async () => {
 ['provider','channel','region','currency','serviceTier','modality','confidence','convert'].forEach(id => $(id).addEventListener('change', load));
 $('q').addEventListener('input', render);
 
-initFilters().then(() => { setTab('official'); loadWebhooks(); });
+initFilters().then(() => setTab('official'));
 </script>
 </body>
 </html>

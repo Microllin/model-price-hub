@@ -10,9 +10,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from app.config import settings
+from app.config import settings  # noqa: F401  (保留: 其他调用方历史依赖)
 from app.models.canonical import is_official
 from app.models.pricing import PriceEntry, Provenance, RawPrice
+from app.policy import get_policy
 
 # 每 1M tokens 单价的合理上界(USD 或 CNY 同量级足够宽松):超过即视为解析错误
 _MAX_PRICE_PER_1M = 100_000.0
@@ -90,8 +91,8 @@ def validate_and_merge(
         if old is None:
             report.added.append(_label(r))
             result[k] = new_entry
-        elif _changed_too_much(new_entry, old, settings.price_change_freeze_ratio) and not is_official(r.channel, r.source):
-            # 第三方异常波动继续冻结；官方结构化抓取成功时自动生效。
+        elif _changed_too_much(new_entry, old, get_policy().price_change_freeze_ratio) and not is_official(r.channel, r.source):
+            # 第三方异常波动继续冻结(阈值以后台策略为准)；官方结构化抓取成功时自动生效。
             frozen = old.model_copy(update={"provenance": Provenance.STALE})
             result[k] = frozen
             report.frozen.append(_label(r))

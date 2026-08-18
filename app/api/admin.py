@@ -14,10 +14,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from app.config import settings
+from app.policy import DEFAULT_POLICY, Policy, get_policy, save_policy
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 SESSION_COOKIE = "mph_admin_session"
 SESSION_TTL = 12 * 3600
+
+# ---- 登录防爆破：同一账号连续失败锁定 ----
+MAX_LOGIN_FAILS = 5
+LOGIN_LOCK_SECONDS = 600
+_login_failures: dict[str, list[float]] = {}  # username -> [失败时间戳]
 
 
 def _path(name: str) -> Path:
@@ -84,15 +90,8 @@ class PasswordInput(BaseModel):
     new_password: str = Field(min_length=10)
 
 
-class PolicyInput(BaseModel):
-    price_change_freeze_ratio: float = Field(default=0.40, ge=0, le=10)
-    official_auto_apply: bool = True
-    agent_auto_review: bool = True
-    notify_model_lifecycle: bool = True
-    notify_price_changes: bool = True
-    notify_third_party: bool = False
-    discovery_interval_hours: int = Field(default=6, ge=1, le=168)
-    catalog_interval_hours: int = Field(default=6, ge=1, le=168)
+# 策略模型统一定义在 app.policy，后台保存后由管线/Webhook 实时消费。
+PolicyInput = Policy
 
 
 class ApiKeyInput(BaseModel):
@@ -102,17 +101,22 @@ class ApiKeyInput(BaseModel):
     rate_limit_per_minute: int = Field(default=120, ge=1, le=100000)
 
 
-DEFAULT_POLICY = PolicyInput().model_dump()
-
-
 @router.post("/login")
 def login(body: LoginInput, response: Response):
     admin = _admin()
     if not admin:
         raise HTTPException(503, "尚未配置管理员；请设置 MPH_ADMIN_USERNAME 和 MPH_ADMIN_PASSWORD")
+    now = time.time()
+    fails = [t for t in _login_failures.get(body.username, []) if now - t < LOGIN_LOCK_SECONDS]
+    if len(fails) >= MAX_LOGIN_FAILS:
+        retry = int(LOGIN_LOCK_SECONDS - (now - fails[0]))
+        raise HTTPException(429, f"失败次数过多，账号已锁定，请 {max(retry, 1)} 秒后重试")
     expected = _hash_password(body.password, admin["salt"])
     if not (hmac.compare_digest(body.username, admin["username"]) and hmac.compare_digest(expected, admin["password_hash"])):
+        fails.append(now)
+        _login_failures[body.username] = fails
         raise HTTPException(401, "用户名或密码错误")
+    _login_failures.pop(body.username, None)
     token = secrets.token_urlsafe(32)
     sessions = _sessions()
     sessions = {k: v for k, v in sessions.items() if v.get("expires_at", 0) > time.time()}
@@ -148,15 +152,13 @@ def change_password(body: PasswordInput, admin: dict = Depends(require_admin)):
 
 
 @router.get("/policy")
-def get_policy(admin: dict = Depends(require_admin)):
-    return {"policy": {**DEFAULT_POLICY, **_read_json(_path("policy.json"), {})}}
+def get_policy_api(admin: dict = Depends(require_admin)):
+    return {"policy": get_policy().model_dump()}
 
 
 @router.put("/policy")
 def update_policy(body: PolicyInput, admin: dict = Depends(require_admin)):
-    value = body.model_dump()
-    _write_json(_path("policy.json"), value)
-    return {"policy": value}
+    return {"policy": save_policy(body).model_dump()}
 
 
 def _api_keys() -> list[dict[str, Any]]:
@@ -198,3 +200,36 @@ def delete_api_key(key_id: str, admin: dict = Depends(require_admin)):
         raise HTTPException(404, "API Key 不存在")
     _write_json(_path("api-keys.json"), remaining)
     return {"ok": True}
+
+
+# ---- 只读 API 的 Key 认证（策略 api_key_required 开启后生效）----
+
+_rate_counters: dict[str, list[int]] = {}  # key_id -> [分钟窗口, 计数]
+
+
+def require_api_key(request: Request) -> dict[str, Any] | None:
+    """公开只读端点的可选认证。策略未开启时直接放行。"""
+    if not get_policy().api_key_required:
+        return None
+    key = request.headers.get("X-API-Key", "")
+    if not key:
+        raise HTTPException(401, "缺少 X-API-Key；请在后台创建 API Key 或关闭 api_key_required 策略")
+    digest = hashlib.sha256(key.encode()).hexdigest()
+    items = _api_keys()
+    item = next((x for x in items if x.get("key_hash") == digest), None)
+    if item is None or not item.get("enabled", True):
+        raise HTTPException(403, "API Key 无效或已停用")
+    if "read" not in item.get("scopes", []):
+        raise HTTPException(403, "API Key 缺少 read 权限")
+    minute = int(time.time() // 60)
+    window, count = _rate_counters.get(item["id"], [minute, 0])
+    if window != minute:
+        window, count = minute, 0
+    count += 1
+    _rate_counters[item["id"]] = [window, count]
+    if count > item.get("rate_limit_per_minute", 120):
+        raise HTTPException(429, "API Key 超出每分钟限流")
+    if count == 1:  # 每个限流窗口最多落盘一次，避免高频写 JSON
+        item["last_used_at"] = datetime.now(timezone.utc).isoformat()
+        _write_json(_path("api-keys.json"), items)
+    return item

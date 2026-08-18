@@ -30,10 +30,22 @@ curl http://127.0.0.1:8000/v1/catalog/health
 docker compose ps
 ```
 
+## 后台管理
+
+前后台分离：前台价格页 `/`，后台管理 `/admin`（需登录）。
+
+- 生产环境务必设置强密码 `MPH_ADMIN_PASSWORD`，并在反向代理后开启 `MPH_ADMIN_COOKIE_SECURE=true`。
+- 后台可管理：运行策略、官方数据源、Webhook、API Key 与管理员密码。
+- 开启策略 `api_key_required` 后，`/v1/prices` 等只读接口必须携带 `X-API-Key`。
+- 管理员账号数据存于 `data/admin.json`（PBKDF2 加盐哈希），会话存于 `data/admin-sessions.json`。
+
 ## 环境变量
 
 | 变量 | 说明 |
 |---|---|
+| `MPH_ADMIN_USERNAME` | 后台管理员账号（默认 `admin`） |
+| `MPH_ADMIN_PASSWORD` | 后台管理员初始密码；不设置则禁用后台登录 |
+| `MPH_ADMIN_COOKIE_SECURE` | HTTPS 部署时置 `true`，Cookie 仅走加密连接 |
 | `MPH_HTTP_PROXY` | 可选出站代理 |
 | `MPH_USE_PLAYWRIGHT` | 是否启用浏览器渲染 |
 | `MPH_RENDER_CONCURRENCY` | 浏览器并发上限 |

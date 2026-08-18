@@ -2,6 +2,25 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.2.1] - 2026-08-18
+
+### Added
+
+- 前后台分离：新增独立后台页面 `/admin`，前台价格页不再内嵌管理弹窗。
+- 后台六个管理模块：概览（服务/管线/目录健康）、策略配置、数据源、Webhook、API Key、账号。
+- 登录防爆破：同一账号连续失败 5 次锁定 10 分钟。
+- 策略配置真正生效：
+  - `price_change_freeze_ratio` 实时作用于价格校验管线；
+  - `notify_price_changes` / `notify_model_lifecycle` / `notify_third_party` 实时作用于 Webhook 事件过滤。
+- 新增策略 `api_key_required`：开启后只读查询 API 必须携带 `X-API-Key`。
+- API Key 支持启用/停用、每分钟限流和最近使用时间追踪。
+- 后台支持修改管理员密码（更新后全部会话失效）。
+
+### Changed
+
+- 策略模型统一收敛到 `app/policy.py`，后台保存后无需重启即被管线与 Webhook 消费。
+- 前台价格页右上角管理入口改为跳转 `/admin` 独立页面。
+
 ## [0.2.0] - 2026-08-18
 
 ### Added

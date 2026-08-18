@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+
+from app.policy import get_policy
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -316,9 +318,24 @@ def send_webhook(item: WebhookConfig, event: dict[str, Any]) -> dict[str, Any]:
     return {"ok": False, "error": last_error, "attempt": 3}
 
 
+def _policy_allowed(event: dict[str, Any], policy: Any) -> bool:
+    """按后台策略过滤事件类型；notify_third_party 开启时放宽官方来源限制。"""
+    kind = event.get("event")
+    if kind == "test":
+        return True
+    if kind == "price_changed" and not policy.notify_price_changes:
+        return False
+    if kind in {"model_added", "model_removed"} and not policy.notify_model_lifecycle:
+        return False
+    if policy.notify_third_party:
+        return kind in {"price_changed", "model_added", "model_removed"}
+    return _official_event(event)
+
+
 def deliver_events(events: list[dict[str, Any]]) -> dict[str, int]:
     """过滤并投递事件，返回真实投递统计，而不是上游候选数量。"""
-    eligible = [event for event in events if _official_event(event)]
+    policy = get_policy()
+    eligible = [event for event in events if _policy_allowed(event, policy)]
     if not events:
         return {"eligible": 0, "delivered": 0, "succeeded": 0, "failed": 0}
     delivered = succeeded = failed = 0

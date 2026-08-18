@@ -36,7 +36,33 @@ def test_takes_first_tier_alias_official_cny():
     assert mx.provider == "aliyun" and mx.channel == "official"
     assert mx.currency == Currency.CNY and mx.region == Region.CN
     assert mx.input_per_1m == 2.5 and mx.output_per_1m == 10.0
+    assert mx.context_range == "0-32k"  # 阶梯维度填充
     assert rows["qwen-plus"].input_per_1m == 0.8
+
+
+def test_multi_context_tiers_emitted():
+    """多阶梯模型每个上下文档位产出一条记录。"""
+    body = """qwen3-max
+中国内地
+非思考和思考模式
+0<Token≤32K
+2.5元
+10元
+32K<Token≤128K
+3元
+12元
+Token>128K
+6元
+24元
+qwen-plus
+中国内地
+0<Token≤128K
+0.8元
+2元
+"""
+    rows = [r for r in AliyunScraper().parse(body) if r.model == "qwen3-max"]
+    tiers = {r.context_range: (r.input_per_1m, r.output_per_1m) for r in rows}
+    assert tiers == {"0-32k": (2.5, 10.0), "32k-128k": (3.0, 12.0), ">128k": (6.0, 24.0)}
 
 
 def test_skips_date_snapshots_and_multimodal():

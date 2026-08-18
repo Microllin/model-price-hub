@@ -156,6 +156,16 @@ def get_policy_api(admin: dict = Depends(require_admin)):
     return {"policy": get_policy().model_dump()}
 
 
+@router.get("/drift")
+def get_drift(admin: dict = Depends(require_admin)):
+    """最近一次管线运行的数据质量漂移报告。"""
+    from app.pipeline.drift import read_drift_report
+    report = read_drift_report()
+    if report is None:
+        raise HTTPException(404, "尚无漂移报告；请先运行一次抓取管线")
+    return report
+
+
 @router.put("/policy")
 def update_policy(body: PolicyInput, admin: dict = Depends(require_admin)):
     return {"policy": save_policy(body).model_dump()}

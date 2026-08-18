@@ -24,6 +24,7 @@ from app.models.pricing import RawPrice
 from app.pipeline.health import update_status
 from app.api.webhooks import build_events, deliver_events
 from app.agents.tasks import enqueue
+from app.pipeline.drift import build_drift_report, write_drift_report
 from app.pipeline.store import load_latest_snapshot, load_overrides, write_snapshot
 from app.pipeline.validate import apply_overrides, validate_and_merge
 from app.scrapers.registry import all_scrapers
@@ -153,6 +154,14 @@ async def _finish_run(scraped: list[RawPrice], healthy_sources: set[str], dry_ru
 
     path = write_snapshot(entries)
     n = sync_entries(entries)
+    # 数据质量漂移报告：新增/消失模型、未匹配官方条目、孤儿模型、跨源价格偏差、维度覆盖率
+    try:
+        drift = build_drift_report(entries, previous)
+        write_drift_report(drift)
+        c = drift["counts"]
+        print(f"🔍 漂移报告:新增 {c['models_new']} · 消失 {c['models_removed']} · 未匹配官方 {c['unmatched_official']} · 孤儿 {c['orphan_models']} · 价格偏差 {c['price_drift']}")
+    except Exception as exc:  # 报告失败不影响入库
+        print(f"⚠️ 漂移报告生成失败：{exc!r}", file=sys.stderr)
     events = build_events(previous, entries, scraped, path.stem, healthy_sources=effective_healthy)
     delivery = {"eligible": 0, "delivered": 0, "succeeded": 0, "failed": 0}
     try:

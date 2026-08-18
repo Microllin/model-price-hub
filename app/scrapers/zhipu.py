@@ -1,9 +1,10 @@
 """智谱 GLM 官网定价抓取器 —— 官方 CNY per-token 价。
 
 open.bigmodel.cn/pricing 为 SPA,需 Playwright。渲染后 GLM 模型按上下文长度分档,
-单位为元/百万tokens(= 每 1M):
-    GLM-5.1  输入长度[0,32) 6元 24元  限时免费 1.3元 ...  输入长度[32+) 8元 28元
-取每个模型第一档的输入/输出价作为官方价(channel=official → 参与置信度)。
+单位为元/百万tokens(= 每 1M),行序列形如:
+    GLM-5.1 / 输入长度 [0, 32) / 6元 / 24元 / 限时免费 / 1.3元 / 输入长度 [32+) / 8元 / 28元
+每个阶梯产出一条带 context_range 的记录;「限时免费」等促销行只取首两个正式价。
+无阶梯的新品(如 GLM-5.2 新品 1M 8元 28元)产出单条 context_range=None 记录。
 parse(text) 只吃渲染后文本,可离线 fixture 单测。
 """
 from __future__ import annotations
@@ -14,14 +15,16 @@ from app.config import settings
 from app.models.pricing import Currency, RawPrice, Region
 from app.scrapers.base import BaseScraper
 
-# 「GLM 模型名 … X元 Y元」——取模型名后的头两个价格(输入/输出,元/百万tokens)。
-# 不依赖"输入长度"字样:新旗舰用"新品 1M"格式(如 GLM-5.2 新品 1M 8元 28元),
-# 老模型用"输入长度[..]"格式(如 GLM-5.1 输入长度[0,32) 6元 24元),两者都覆盖。
-_PAT = re.compile(
-    r"(GLM-?[0-9][\w.\-]*)"        # 模型名:GLM-5.2 / GLM-5.1 / GLM-5-Turbo / GLM-5
-    r"[\s\S]{0,60}?([\d.]+)\s*元"   # 首个价格(输入),跳过 新品/1M/输入长度[..] 等
-    r"[\s\S]{0,20}?([\d.]+)\s*元"   # 次个价格(输出)
-)
+# 模型名行:GLM-5.2 / GLM-5.1 / GLM-5-Turbo / GLM-5
+_NAME = re.compile(r"^(GLM-?[0-9][\w.\-]*)$", re.I)
+# 阶梯行:「输入长度 [0, 32)」或「输入长度 [32+)」(单位 K)
+_TIER = re.compile(r"输入长度\s*\[\s*(\d+)\s*(?:[,，]\s*(\d+)\s*|\+\s*)\)")
+_PRICE = re.compile(r"^([\d.]+)\s*元")
+
+
+def _norm_tier(m: re.Match) -> str:
+    lo, hi = m.group(1), m.group(2)
+    return f"{lo}-{hi}k" if hi else f">{lo}k"
 
 
 class ZhipuScraper(BaseScraper):
@@ -54,22 +57,44 @@ class ZhipuScraper(BaseScraper):
                 await browser.close()
 
     def parse(self, text: str) -> list[RawPrice]:
-        results: dict[str, RawPrice] = {}
-        for name, inp, out in _PAT.findall(text):
-            name = name.strip()
-            if name in results:  # 只取每个模型第一档
-                continue
-            input_p, output_p = float(inp), float(out)
-            if input_p == 0 and output_p == 0:
-                continue
-            results[name] = RawPrice(
+        lines = [l.strip() for l in text.split("\n") if l.strip()]
+        results: dict[tuple[str, str | None], RawPrice] = {}
+
+        def emit(name: str, tier: str | None, prices: list[float]) -> None:
+            if len(prices) < 2 or (prices[0] == 0 and prices[1] == 0):
+                return
+            key = (name, tier)
+            if key in results:
+                return
+            results[key] = RawPrice(
                 provider=self.provider,
                 channel=self.channel,
                 model=name,
                 region=Region.CN,
                 currency=Currency.CNY,
-                input_per_1m=input_p,
-                output_per_1m=output_p,
+                input_per_1m=prices[0],
+                output_per_1m=prices[1],
+                context_range=tier,
                 source_url=self.source_url,
             )
+
+        for i, line in enumerate(lines):
+            m = _NAME.match(line)
+            if not m:
+                continue
+            name = m.group(1)
+            tier: str | None = None
+            prices: list[float] = []
+            for nxt in lines[i + 1 : i + 25]:
+                if _NAME.match(nxt):
+                    break
+                tm = _TIER.search(nxt)
+                if tm:
+                    emit(name, tier, prices)
+                    tier, prices = _norm_tier(tm), []
+                    continue
+                pm = _PRICE.match(nxt)
+                if pm and len(prices) < 2:  # 促销价(限时免费等)不覆盖正式价
+                    prices.append(float(pm.group(1)))
+            emit(name, tier, prices)
         return list(results.values())

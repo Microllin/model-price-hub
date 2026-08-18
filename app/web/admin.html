@@ -107,6 +107,7 @@
   </header>
   <nav class="tabs">
     <button class="tab active" data-tab="overview">概览</button>
+    <button class="tab" data-tab="quality">数据质量</button>
     <button class="tab" data-tab="policy">策略配置</button>
     <button class="tab" data-tab="sources">数据源</button>
     <button class="tab" data-tab="webhooks">Webhook</button>
@@ -119,6 +120,16 @@
       <div class="grid3" id="statCards"></div>
       <div class="card"><h3>价格管线</h3><div id="pipelineInfo" class="muted">加载中…</div></div>
       <div class="card"><h3>模型目录</h3><div id="catalogInfo" class="muted">加载中…</div></div>
+    </section>
+
+    <!-- 数据质量 -->
+    <section class="pane" id="pane-quality">
+      <div class="grid3" id="driftCards"></div>
+      <div class="card"><h3>维度覆盖率（字段非空占比，低覆盖率说明抓取器还没填该维度）</h3><div id="coverageBars"></div></div>
+      <div class="card"><h3>跨源价格偏差（第三方参考价 vs 官方价，超阈值需复核）</h3><div id="driftList" class="muted">加载中…</div></div>
+      <div class="card"><h3>未匹配官方条目（仅单一来源，无法交叉验证）</h3><div id="unmatchedList" class="muted">加载中…</div></div>
+      <div class="card"><h3>孤儿模型（只有第三方旁证，无官方源）</h3><div id="orphanList" class="muted">加载中…</div></div>
+      <div class="card"><h3>本轮新增 / 消失模型</h3><div id="modelDelta" class="muted">加载中…</div></div>
     </section>
 
     <!-- 策略配置 -->
@@ -289,6 +300,44 @@ async function loadOverview() {
   } catch (e) { $('catalogInfo').textContent = e.message; }
 }
 
+/* ---- 数据质量（漂移报告） ---- */
+function driftItem(html) { return `<div class="item"><div class="info">${html}</div></div>`; }
+async function loadDrift() {
+  let d;
+  try { d = await api('/v1/admin/drift'); }
+  catch (e) {
+    $('driftCards').innerHTML = '';
+    $('coverageBars').innerHTML = '';
+    $('driftList').textContent = e.message;
+    $('unmatchedList').textContent = ''; $('orphanList').textContent = ''; $('modelDelta').textContent = '';
+    return;
+  }
+  const c = d.counts || {};
+  $('driftCards').innerHTML = [
+    ['条目 / 模型', `${c.entries ?? 0} / ${c.models ?? 0}`],
+    ['新增 / 消失', `<span class="badge on">+${c.models_new ?? 0}</span> <span class="badge off">-${c.models_removed ?? 0}</span>`],
+    ['价格偏差告警', c.price_drift ? `<span class="badge off">${c.price_drift}</span>` : '<span class="badge on">0</span>'],
+  ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  const cov = d.dimension_coverage || {};
+  $('coverageBars').innerHTML = Object.entries(cov).map(([f, pct]) => `
+    <div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${esc(f)}</span><span class="${pct < 30 ? 'muted' : ''}">${pct}%</span></div>
+    <div style="height:6px;background:var(--bg);border-radius:3px;margin-top:3px"><div style="height:100%;width:${pct}%;background:${pct < 30 ? 'var(--lo)' : 'var(--accent)'};border-radius:3px"></div></div></div>`).join('');
+  $('driftList').innerHTML = (d.price_drift || []).map(x => driftItem(
+    `<strong>${esc(x.model)} <span class="badge">${esc(x.currency)}</span></strong>
+     <div class="sub">官方 ${x.official_input} → 第三方 ${x.third_party_input}（${x.drift_pct > 0 ? '+' : ''}${x.drift_pct}%）· 来源：${(x.third_party_sources || []).join('、')}</div>`
+  )).join('') || '<span class="muted">无超阈值偏差。</span>';
+  $('unmatchedList').innerHTML = (d.unmatched_official || []).map(x => driftItem(
+    `<strong>${esc(x.model)}</strong><div class="sub">${esc(x.provider)} · ${esc(x.source)} · ${esc(x.note)}</div>`
+  )).join('') || '<span class="muted">无。</span>';
+  $('orphanList').innerHTML = (d.orphan_models || []).map(x => driftItem(
+    `<strong>${esc(x.model)}</strong><div class="sub">厂商：${(x.providers || []).join('、')} · 来源：${(x.sources || []).join('、')}</div>`
+  )).join('') || '<span class="muted">无。</span>';
+  $('modelDelta').innerHTML = `
+    <div class="sub" style="margin-bottom:6px">生成时间：${esc(d.generated_at || '—')}</div>
+    <div style="margin-bottom:8px"><span class="badge on">新增 ${(d.new_models || []).length}</span> ${(d.new_models || []).slice(0, 30).map(m => `<code>${esc(m)}</code>`).join(' ') || '<span class="muted">无</span>'}</div>
+    <div><span class="badge off">消失 ${(d.removed_models || []).length}</span> ${(d.removed_models || []).slice(0, 30).map(m => `<code>${esc(m)}</code>`).join(' ') || '<span class="muted">无</span>'}</div>`;
+}
+
 /* ---- 策略 ---- */
 async function loadPolicy() {
   const { policy: p } = await api('/v1/admin/policy');
@@ -422,7 +471,7 @@ async function boot() {
     const me = await api('/v1/admin/me');
     $('whoami').textContent = '管理员：' + me.username;
     showAdmin();
-    loadOverview(); loadPolicy(); loadSources(); loadWebhooks(); loadApiKeys();
+    loadOverview(); loadDrift(); loadPolicy(); loadSources(); loadWebhooks(); loadApiKeys();
   } catch { showLogin(); }
 }
 boot();

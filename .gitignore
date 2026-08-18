@@ -33,6 +33,7 @@ data/webhooks.json
 data/webhook-removal-state.json
 data/pipeline-health.json
 data/pipeline-health.lock
+data/drift.json
 data/admin.json
 data/admin-sessions.json
 data/api-keys.json

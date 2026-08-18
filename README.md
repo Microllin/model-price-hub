@@ -1,11 +1,18 @@
-# Model Price Hub
+<div align="center">
+  <h1>Model Price Hub</h1>
+  <p><strong>大模型官方价格、模型生命周期和变更监控平台</strong></p>
+  <p>
+    <a href="https://github.com/Microllin/model-price-hub/actions/workflows/ci.yml"><img src="https://github.com/Microllin/model-price-hub/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+    <a href="https://github.com/Microllin/model-price-hub/releases"><img src="https://img.shields.io/github/v/release/Microllin/model-price-hub" alt="Release"></a>
+    <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-%3E%3D3.10-blue" alt="Python"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/Microllin/model-price-hub" alt="License"></a>
+  </p>
+  <p>
+    <a href="#核心能力">核心能力</a> · <a href="#快速开始">快速开始</a> · <a href="#技术栈">技术栈</a> · <a href="#配置">配置说明</a> · <a href="#api">API</a> · <a href="#贡献">Contributing</a>
+  </p>
+</div>
 
-[![CI](https://github.com/Microllin/model-price-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/Microllin/model-price-hub/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Microllin/model-price-hub)](https://github.com/Microllin/model-price-hub/releases)
-[![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue)](pyproject.toml)
-[![License](https://img.shields.io/github/license/Microllin/model-price-hub)](LICENSE)
-
-大模型官方价格、模型生命周期和变更监控平台。
+---
 
 Model Price Hub 将官方模型目录、官方价格、第三方价格旁证、RSS/公告监控和 Agent 自动复核拆成清晰的数据边界，提供 FastAPI、Web 前端、Docker 调度服务和 Webhook 通知。
 

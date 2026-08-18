@@ -2,6 +2,21 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.4.0] - 2026-08-18
+
+### Added
+
+- 新增 Anthropic 官方抓取器：主表（输入/输出/缓存读）+ 缓存写 5m/1h 双档条件价（`cache_state=write_5m/write_1h`）+ Fast mode 与 Batch 档位。
+- 新增 OpenAI 官方抓取器：standard / batch / flex / fast 四个服务档位（从 astro-island props 提取），短/长上下文双列（`context_range=long`），Realtime 模态分项（audio/text/image），ChatGPT/Codex 分类表。
+- 新增 Google 官方抓取器：27 个 Gemini/Gemma 模型 × standard/batch/flex/priority 四档，上下文分档（0-200k/>200k），促销价取当前生效价并记录 `effective_to`，存储费与 grounding 按次计费正确剔除。
+- 三个抓取器均为 plain HTTP（页面 SSR 友好，无需 Playwright/视觉凭据），模型 id 对齐 litellm 风格，与 LiteLLM 旁证自动交叉验证。
+- `extract_tables_with_context`：表格抽取携带 h1-h4 标题路径。
+- 新增 9 个离线 fixture 测试（三家官方源）。
+
+### Changed
+
+- Webhook 官方源集合新增 openai / anthropic / google，其官方价格事件可正常投递。
+
 ## [0.3.0] - 2026-08-18
 
 ### Added

@@ -8,12 +8,15 @@
 from __future__ import annotations
 
 from app.scrapers.aliyun import AliyunScraper
+from app.scrapers.anthropic import AnthropicScraper
 from app.scrapers.baidu import BaiduScraper
 from app.scrapers.base import BaseScraper
 from app.scrapers.deepseek import DeepSeekScraper
+from app.scrapers.google import GoogleScraper
 from app.scrapers.kimi import KimiScraper
 from app.scrapers.litellm_json import LiteLLMScraper
 from app.scrapers.minimax import MiniMaxScraper
+from app.scrapers.openai import OpenAIScraper
 from app.scrapers.openrouter import OpenRouterScraper
 from app.scrapers.ppio import PPIOScraper
 from app.scrapers.siliconflow import SiliconFlowScraper
@@ -38,6 +41,9 @@ def all_scrapers() -> list[BaseScraper]:
         KimiScraper(),            # Kimi 官网 · 视觉(表格无头不渲染,见 kimi.py)
         # ---- 官方定价 · 正则(验证器 / 无视觉时兜底)----
         DeepSeekScraper(),        # 国内官方 · CNY + USD(静态表,正则更稳,官方源)
+        AnthropicScraper(),       # Anthropic 官方 · USD(SSR 表,含缓存写双档/fast/batch)
+        OpenAIScraper(),          # OpenAI 官方 · USD(standard/batch/flex/fast 四档)
+        GoogleScraper(),          # Google Gemini 官方 · USD(分档/促销价/缓存)
         ZhipuScraper(),           # 智谱 GLM · 正则(验证 vision-zhipu)
         MiniMaxScraper(),         # MiniMax · 正则(验证 vision-minimax)
         AliyunScraper(),          # 通义千问 · 正则(SSR 大页,49 模型,保留为官方源)

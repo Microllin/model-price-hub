@@ -49,3 +49,43 @@ def extract_tables(html: str) -> list[list[list[str]]]:
     p = _TableParser()
     p.feed(html)
     return p.tables
+
+
+class _ContextTableParser(_TableParser):
+    """在表格抽取之上记录每个表的标题路径(按层级维护 h1-h4 栈)。"""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.contexts: list[str] = []
+        self._heading_tag: str | None = None
+        self._heading_text: list[str] = []
+        self._headings: dict[int, str] = {}  # 层级 -> 最近标题文本
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("h1", "h2", "h3", "h4") and self._cur_table is None:
+            self._heading_tag = tag
+            self._heading_text = []
+        super().handle_starttag(tag, attrs)
+
+    def handle_endtag(self, tag):
+        if self._heading_tag is not None and tag == self._heading_tag:
+            level = int(tag[1])
+            self._headings[level] = " ".join("".join(self._heading_text).split())
+            for deeper in [lv for lv in self._headings if lv > level]:
+                del self._headings[deeper]
+            self._heading_tag = None
+        if tag == "table" and self._cur_table is not None:
+            self.contexts.append(" > ".join(self._headings[lv] for lv in sorted(self._headings)))
+        super().handle_endtag(tag)
+
+    def handle_data(self, data):
+        if self._heading_tag is not None and self._cur_cell is None:
+            self._heading_text.append(data)
+        super().handle_data(data)
+
+
+def extract_tables_with_context(html: str) -> list[tuple[str, list[list[str]]]]:
+    """返回 (最近的标题文本, 表格) 列表,按文档顺序。"""
+    p = _ContextTableParser()
+    p.feed(html)
+    return list(zip(p.contexts, p.tables))

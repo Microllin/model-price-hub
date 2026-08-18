@@ -25,7 +25,7 @@ router = APIRouter(prefix="/v1/webhooks", tags=["webhooks"])
 
 EVENTS = {"price_changed", "model_added", "model_removed"}
 # 只有厂商官方抓取器/人工 override 才能触发飞书，LiteLLM 不能冒充官方源。
-OFFICIAL_SOURCES = {"aliyun", "baidu", "deepseek", "minimax", "tencent", "zhipu", "override", "official-page", "vision-aliyun", "vision-baidu", "vision-deepseek", "vision-minimax", "vision-moonshot", "vision-tencent", "vision-zhipu"}
+OFFICIAL_SOURCES = {"aliyun", "baidu", "deepseek", "minimax", "tencent", "zhipu", "openai", "anthropic", "google", "override", "official-page", "vision-aliyun", "vision-baidu", "vision-deepseek", "vision-minimax", "vision-moonshot", "vision-tencent", "vision-zhipu"}
 
 
 def _model_key(e: PriceEntry | RawPrice) -> tuple:

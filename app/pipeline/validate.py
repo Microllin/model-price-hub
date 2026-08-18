@@ -49,8 +49,11 @@ def _sane(e: RawPrice) -> bool:
             continue
         if v < 0 or v > _MAX_PRICE_PER_1M:
             return False
-    # 至少要有输入或输出价
-    return e.input_per_1m is not None or e.output_per_1m is not None
+    # 至少有一个价格字段(缓存写条件价行只有 cache_write_per_1m,也是合法数据)
+    return any(
+        v is not None
+        for v in (e.input_per_1m, e.output_per_1m, e.cached_input_per_1m, e.cache_write_per_1m)
+    )
 
 
 def _changed_too_much(new: PriceEntry, old: PriceEntry, ratio: float) -> bool:

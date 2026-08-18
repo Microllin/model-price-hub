@@ -2,6 +2,12 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.4.1] - 2026-08-18
+
+### Fixed
+
+- 修复校验层 `_sane` 把「仅缓存写价格」的条件价行当空数据丢弃的问题（Anthropic cache write 5m/1h 维度曾整批丢失，30 条）。
+
 ## [0.4.0] - 2026-08-18
 
 ### Added

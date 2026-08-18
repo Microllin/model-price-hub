@@ -33,6 +33,14 @@ def test_insane_price_dropped():
     assert len(report.dropped) == 1
 
 
+def test_cache_write_only_row_is_sane():
+    """缓存写条件价行(仅 cache_write_per_1m)是合法数据,不得丢弃。"""
+    raw = _raw("m1", None, None).model_copy(update={"cache_write_per_1m": 6.25, "cache_state": "write_5m"})
+    entries, report = validate_and_merge([raw], [])
+    assert not report.dropped
+    assert entries[0].cache_write_per_1m == 6.25
+
+
 def test_large_official_change_is_auto_applied():
     prev = [_entry("m1", 1.0, 2.0)]
     entries, report = validate_and_merge([_raw("m1", 10.0, 2.0)], prev)

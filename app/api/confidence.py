@@ -71,6 +71,8 @@ def official_prices(entries: list[PriceEntry]) -> list[dict]:
         official_input = median(p_inputs)
         p_outputs = [e.output_per_1m for e in primary if e.output_per_1m is not None]
         official_output = median(p_outputs) if p_outputs else None
+        p_cached = [e.cached_input_per_1m for e in primary if e.cached_input_per_1m is not None]
+        p_cache_write = [e.cache_write_per_1m for e in primary if e.cache_write_per_1m is not None]
 
         # 冲突:有视觉也有正则,但正则值偏离视觉显示价超容差
         conflict = bool(vision_offs) and any(
@@ -102,7 +104,11 @@ def official_prices(entries: list[PriceEntry]) -> list[dict]:
                 "effective_to": rep.effective_to.isoformat() if rep.effective_to else None,
                 "input_per_1m": official_input,
                 "output_per_1m": official_output,
+                "cached_input_per_1m": median(p_cached) if p_cached else None,
+                "cache_write_per_1m": median(p_cache_write) if p_cache_write else None,
                 "context_window": rep.context_window,
+                "source_url": rep.source_url,         # 数据来源链接(显示价主源)
+                "scraped_at": rep.scraped_at.isoformat() if rep.scraped_at else None,
                 "confidence": confidence,
                 "conflict": conflict,
                 "primary_source": rep.source,          # 显示价来自哪个源(vision-* 表示视觉主源)

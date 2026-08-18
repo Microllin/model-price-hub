@@ -2,6 +2,16 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.4.2] - 2026-08-18
+
+### Added
+
+- 官方价格表新增「数据来源」列：显示价主源名称 + 官方来源链接，每行可溯源。
+
+### Fixed
+
+- 修复 `/v1/official-prices` 聚合行丢失字段的问题：`source_url`、`cached_input_per_1m`、`cache_write_per_1m`、`scraped_at` 现正确输出（此前官方 tab 缓存读/写两列始终为空）。
+
 ## [0.4.1] - 2026-08-18
 
 ### Fixed

@@ -374,6 +374,7 @@ const COLS = {
     {k:'cache_write_per_1m', t:'缓存写 /1M', num:true, render:r=>fmt(r.cache_write_per_1m)},
     {k:'context_window', t:'上下文', num:true, render:r=>ctx(r.context_window)},
     {k:'confidence', t:'置信度', render:confBadge},
+    {k:'primary_source', t:'数据来源', render:r=>`<span class="muted">${r.primary_source||'—'}</span>${r.source_url?` <a href="${r.source_url}" target="_blank" rel="noopener" title="查看官方来源">↗</a>`:''}`},
   ],
   channels: [
     {k:'provider', t:'厂商'},

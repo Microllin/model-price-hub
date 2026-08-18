@@ -18,6 +18,25 @@ def test_single_official_source_is_low():
     rows = official_prices(entries)
     assert len(rows) == 1
     assert rows[0]["confidence"] == "low"
+
+
+def test_aggregated_row_carries_source_and_cache_fields():
+    """聚合行必须带数据来源与缓存读/写字段(前端官方 tab 溯源列)。"""
+    from datetime import datetime, timezone
+    e = _e("anthropic", "claude-opus-5", "claude-opus-5", "USD", 5, 25, "official", "anthropic", True)
+    e = e.model_copy(update={
+        "cached_input_per_1m": 0.5,
+        "cache_write_per_1m": 6.25,
+        "source_url": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+        "scraped_at": datetime(2026, 8, 18, tzinfo=timezone.utc),
+    })
+    rows = official_prices([e])
+    r = rows[0]
+    assert r["source_url"] == "https://docs.anthropic.com/en/docs/about-claude/pricing"
+    assert r["primary_source"] == "anthropic"
+    assert r["cached_input_per_1m"] == 0.5
+    assert r["cache_write_per_1m"] == 6.25
+    assert r["scraped_at"].startswith("2026-08-18")
     assert rows[0]["source_count"] == 1
 
 

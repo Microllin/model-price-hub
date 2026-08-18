@@ -20,6 +20,17 @@ def test_single_official_source_is_low():
     assert rows[0]["confidence"] == "low"
 
 
+def test_cache_write_only_row_kept_in_aggregation():
+    """仅缓存写的条件价行(cache_state=write_5m,无输入/输出价)必须出现在聚合结果。"""
+    base = _e("anthropic", "claude-opus-5", "claude-opus-5", "USD", 5, 25, "official", "anthropic", True)
+    write5 = _e("anthropic", "claude-opus-5", "claude-opus-5", "USD", None, None, "official", "anthropic", True).model_copy(
+        update={"cache_write_per_1m": 6.25, "cache_state": "write_5m"})
+    rows = official_prices([base, write5])
+    assert len(rows) == 2
+    w = [r for r in rows if r["cache_state"] == "write_5m"][0]
+    assert w["input_per_1m"] is None and w["cache_write_per_1m"] == 6.25
+
+
 def test_aggregated_row_carries_source_and_cache_fields():
     """聚合行必须带数据来源与缓存读/写字段(前端官方 tab 溯源列)。"""
     from datetime import datetime, timezone

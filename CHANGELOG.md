@@ -2,6 +2,12 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.4.3] - 2026-08-18
+
+### Fixed
+
+- 修复官方价格聚合丢弃「仅缓存写」条件价行的问题（Anthropic write_5m/write_1h 行现在官方价格表可见）。
+
 ## [0.4.2] - 2026-08-18
 
 ### Added

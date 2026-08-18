@@ -66,13 +66,13 @@ def official_prices(entries: list[PriceEntry]) -> list[dict]:
         primary = vision_offs or offs  # 视觉优先,否则全部官方
 
         p_inputs = [e.input_per_1m for e in primary if e.input_per_1m is not None]
-        if not p_inputs:
-            continue
-        official_input = median(p_inputs)
         p_outputs = [e.output_per_1m for e in primary if e.output_per_1m is not None]
-        official_output = median(p_outputs) if p_outputs else None
         p_cached = [e.cached_input_per_1m for e in primary if e.cached_input_per_1m is not None]
         p_cache_write = [e.cache_write_per_1m for e in primary if e.cache_write_per_1m is not None]
+        if not (p_inputs or p_outputs or p_cached or p_cache_write):
+            continue  # 全空行无展示价值;仅缓存写的条件价行仍保留
+        official_input = median(p_inputs) if p_inputs else None
+        official_output = median(p_outputs) if p_outputs else None
 
         # 冲突:有视觉也有正则,但正则值偏离视觉显示价超容差
         conflict = bool(vision_offs) and any(
@@ -83,7 +83,7 @@ def official_prices(entries: list[PriceEntry]) -> list[dict]:
         # 印证源:全部条目(含非官方旁证)中 input 落在容差内的去重 source
         corroborating = {
             e.source for e in group if _rel_close(e.input_per_1m, official_input)
-        }
+        } if official_input is not None else {e.source for e in group}
         confidence = _grade(len(corroborating), conflict)
 
         rep = primary[0]

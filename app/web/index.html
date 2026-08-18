@@ -174,9 +174,7 @@
   th:first-child { z-index: 4; }
   tbody tr:nth-child(even) td:first-child { background: color-mix(in srgb, var(--surface) 98%, white); }
   tbody tr:hover td:first-child { background: color-mix(in srgb, var(--surface) 88%, var(--accent)); }
-  table[data-layout="official"] th:nth-child(1), table[data-layout="official"] td:nth-child(1) { width: 190px; max-width: 190px; }
-  table[data-layout="official"] th:nth-child(8), table[data-layout="official"] td:nth-child(8) { width: 310px; max-width: 310px; }
-  table[data-layout="official"] th:nth-child(n+9), table[data-layout="official"] td:nth-child(n+9) { width: 92px; max-width: 92px; }
+  table[data-layout="official"] th:nth-child(1), table[data-layout="official"] td:nth-child(1) { width: 230px; max-width: 230px; }
   table[data-layout="channels"] th:nth-child(6), table[data-layout="channels"] td:nth-child(6) { width: 310px; max-width: 310px; }
   table[data-layout="channels"] th:nth-child(7), table[data-layout="channels"] td:nth-child(7) { width: 220px; max-width: 220px; }
   th {
@@ -190,6 +188,21 @@
   tbody tr { transition: background .1s; }
   tbody tr:nth-child(even) { background: rgba(255,255,255,.012); }
   tbody tr:hover { background: var(--accent-soft); }
+
+  /* ---- 官方 tab:模型聚合行 + 展开价格条件明细 ---- */
+  tr.group-row { cursor: pointer; }
+  .caret { display: inline-block; margin-right: 5px; color: var(--faint); font-size: 10px; transition: transform .15s; }
+  tr.group-row.open .caret { transform: rotate(90deg); color: var(--accent); }
+  .var-count { margin-left: 6px; font-size: 10.5px; font-weight: 700; color: var(--accent); }
+  .detail-row, .detail-row td, .detail-row td:first-child { position: static; background: var(--surface-2); box-shadow: none; }
+  .detail-row:hover, .detail-row:hover td:first-child { background: var(--surface-2); }
+  .detail-cell { white-space: normal; overflow: visible; padding: 2px 16px 8px; height: auto; }
+  .variant { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 7px 4px; border-top: 1px dashed var(--line); }
+  .variant:first-child { border-top: 0; }
+  .variant .vprices { font-variant-numeric: tabular-nums; }
+  .variant .vsrc { color: var(--faint); font-size: 11px; }
+  .detail-cell .badge { font-size: 10.5px; padding: 1px 7px; }
+  .detail-cell .badge.std { color: var(--faint); }
   .model { display: inline-block; max-width: 175px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; font-weight: 600; color: var(--fg); }
 
   /* ---- badges ---- */
@@ -358,15 +371,10 @@ const visionTag = r => (r.via_vision || (r.source||'').startsWith('vision-'))
 
 // 列定义随 tab 变化
 const COLS = {
+  // 官方 tab:按模型聚合的紧凑列(主行=标准价,其余价格条件展开可见)
   official: [
-    {k:'canonical_model', t:'模型 ID', render:r=>`<span class="model" title="${r.canonical_model}">${r.canonical_model}</span>${visionTag(r)}`},
+    {k:'canonical_model', t:'模型 ID', render:r=>`${r._extra?`<span class="caret">▶</span>`:'<span class="caret"></span>'}<span class="model" title="${r.canonical_model}">${r.canonical_model}</span>${visionTag(r)}${r._extra?`<span class="var-count">+${r._extra}</span>`:''}`},
     {k:'provider', t:'厂商'},
-    {k:'service_tier', t:'服务档位', render:r=>`<span class="badge b-manual">${r.service_tier||'standard'}</span>`},
-    {k:'modality', t:'模态'},
-    {k:'billing_unit', t:'计费单位'},
-    {k:'cache_state', t:'缓存状态', render:r=>r.cache_state||'—'},
-    {k:'context_range', t:'上下文档位', render:r=>r.context_range||'—'},
-    {k:'time_window', t:'生效时段', render:windowText},
     {k:'currency', t:'货币', render:r=>curBadge(r.currency)},
     {k:'input_per_1m', t:'输入 /1M', num:true, render:r=>fmt(r.input_per_1m)},
     {k:'output_per_1m', t:'输出 /1M', num:true, render:r=>fmt(r.output_per_1m)},
@@ -404,19 +412,71 @@ function renderHead() {
   }));
 }
 
+// ---- 官方 tab:按 (模型, 地区, 货币) 聚合,主行标准价 + 展开全部价格条件 ----
+const EXPANDED = new Set();
+const isStdRow = r => (r.service_tier||'standard')==='standard' && !r.cache_state && !r.context_range && !r.time_window;
+function groupOfficial(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    const key = `${r.canonical_model}|${r.region}|${r.currency}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(r);
+  }
+  return [...map.entries()].map(([key, variants]) => ({ key, variants, main: variants.find(isStdRow) || variants[0] }));
+}
+
+function variantLine(v) {
+  const conds = [];
+  const tier = v.service_tier || 'standard';
+  conds.push(`<span class="badge ${tier==='standard'?'std':'b-manual'}">${tier}</span>`);
+  if (v.modality && v.modality !== 'text') conds.push(`<span class="badge">${v.modality}</span>`);
+  if (v.cache_state) conds.push(`<span class="badge">缓存 ${v.cache_state}</span>`);
+  if (v.context_range) conds.push(`<span class="badge">上下文 ${v.context_range}</span>`);
+  if (v.time_window) conds.push(`<span class="badge">时段 ${windowText(v)}</span>`);
+  const prices = [`输入 ${fmt(v.input_per_1m)}`, `输出 ${fmt(v.output_per_1m)}`];
+  if (v.cached_input_per_1m != null) prices.push(`缓存读 ${fmt(v.cached_input_per_1m)}`);
+  if (v.cache_write_per_1m != null) prices.push(`缓存写 ${fmt(v.cache_write_per_1m)}`);
+  const src = `${v.primary_source||''}${v.source_url?` <a href="${v.source_url}" target="_blank" rel="noopener">↗</a>`:''}`;
+  return `<div class="variant"><span>${conds.join(' ')}</span><span class="vprices">${prices.join(' · ')}</span><span class="vsrc">${src}</span></div>`;
+}
+
 function render() {
   let rows = ALL.slice();
   const q = $('q').value.trim().toLowerCase();
   if (q) rows = rows.filter(e => (e.canonical_model||e.model||'').toLowerCase().includes(q));
-  rows.sort((a,b) => {
+  const cmp = (a,b) => {
     let x=a[sortKey], y=b[sortKey];
     if (x==null) x=-Infinity; if (y==null) y=-Infinity;
     if (typeof x === 'string') return x.localeCompare(y)*sortDir;
     return (x-y)*sortDir;
-  });
+  };
+  const cs = cols();
+
+  if (TAB === 'official') {
+    const groups = groupOfficial(rows);
+    groups.sort((a,b) => cmp(a.main, b.main));
+    $('count').textContent = `共 ${groups.length.toLocaleString('zh-CN')} 个模型 · ${rows.length.toLocaleString('zh-CN')} 条价格条件`;
+    $('empty').style.display = groups.length ? 'none' : 'block';
+    $('rows').innerHTML = groups.map(g => {
+      const open = EXPANDED.has(g.key);
+      const main = {...g.main, _extra: g.variants.length - 1};
+      const tds = cs.map(c => `<td class="${c.num?'num':''}">${c.render?c.render(main):(main[c.k]??'')}</td>`).join('');
+      const detail = open ? `<tr class="detail-row"><td class="detail-cell" colspan="${cs.length}">${g.variants.map(variantLine).join('')}</td></tr>` : '';
+      return `<tr class="group-row${open?' open':''}" data-group="${g.key}">${tds}</tr>${detail}`;
+    }).join('');
+    $('rows').querySelectorAll('tr.group-row').forEach(tr => tr.addEventListener('click', ev => {
+      if (ev.target.closest('a')) return;  // 点来源链接不触发展开
+      const key = tr.dataset.group;
+      if (!key) return;
+      EXPANDED.has(key) ? EXPANDED.delete(key) : EXPANDED.add(key);
+      render();
+    }));
+    return;
+  }
+
+  rows.sort(cmp);
   $('count').textContent = `共 ${rows.length.toLocaleString('zh-CN')} 条`;
   $('empty').style.display = rows.length ? 'none' : 'block';
-  const cs = cols();
   $('rows').innerHTML = rows.map(r =>
     '<tr>' + cs.map(c => `<td class="${c.num?'num':''}">${c.render?c.render(r):(r[c.k]??'')}</td>`).join('') + '</tr>'
   ).join('');

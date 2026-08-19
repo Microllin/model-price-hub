@@ -14,10 +14,10 @@ def test_filters_and_maps():
     rows = LiteLLMScraper().parse(read_fixture("litellm_sample.json"))
     idx = _index(rows)
 
-    # sample_spec(非 dict)、embedding、非前沿 babbage 都应被过滤
+    # sample_spec(非 dict)、embedding 应被过滤;所有 chat 模型保留
     models = {r.model for r in rows}
     assert "text-embedding-3-large" not in models
-    assert "some-old-babbage" not in models
+    assert "some-old-babbage" in models  # 不再白名单过滤,有价即纳入
 
     # gpt-4o:openai/official,per-token → per-1M
     gpt = idx[("openai", "official", "gpt-4o")]

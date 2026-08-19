@@ -27,12 +27,12 @@ def test_maps_cn_vendors_and_prices():
     assert idx[("deepseek", "deepseek-v4-pro")].cached_input_per_1m == 0.13
 
 
-def test_skips_covered_providers_and_free_and_unknown():
+def test_skips_covered_providers_and_free_but_keeps_unknown():
     rows = OpenRouterScraper().parse(read_fixture("openrouter_sample.json"))
     models = {(r.provider, r.model) for r in rows}
-    # openai 已被 LiteLLM 覆盖 → 跳过
+    # openai 已被官方抓取器覆盖 → 跳过
     assert not any(p == "openai" for p, _ in models)
     # :free 变体跳过
     assert not any("llama" in m for _, m in models)
-    # 未知 vendor 跳过
-    assert not any(p == "some-unknown-vendor" for p, _ in models)
+    # 未知 vendor 现在仍纳入(用 vendor 前缀作为 provider)
+    assert any(p == "some-unknown-vendor" for p, _ in models)

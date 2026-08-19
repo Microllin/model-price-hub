@@ -2,6 +2,20 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.6.0] - 2026-08-19
+
+### Added
+
+- LiteLLM 抓取器取消家族白名单过滤，全量纳入所有 chat/responses 模型（401 → 1973 条）。
+- LiteLLM `_CHANNEL_MAP` 从 10 家扩展到 60+ 家：新增火山引擎/volcengine、阿里/dashscope、月之暗面/moonshot、Groq、Fireworks、Together、Deepinfra、Perplexity、Cerebras、Replicate 等。
+- OpenRouter `_VENDOR_MAP` 新增 bytedance-seed、xiaomi、kuaishou、nvidia、perplexity、amazon、poolside、inclusionai 等 20+ 厂商（136 → 232 条）。
+- 未识别的 vendor 不再丢弃，回退为用 vendor 前缀作为 provider。
+
+### Changed
+
+- 总条目数从 893 增至 **2557**（+186%），覆盖 **93 家厂商**。
+- 新增模型 **882 个**，含 bytedance/seed 系列6条、aliyun/qwen 系 369 条、meta/llama 系 264 条、fireworks 65 条、perplexity 25 条等。
+
 ## [0.5.1] - 2026-08-19
 
 ### Changed

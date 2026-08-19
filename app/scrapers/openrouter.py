@@ -16,17 +16,33 @@ from app.models.pricing import Currency, RawPrice, Region
 from app.scrapers.base import BaseScraper
 
 # OpenRouter vendor 前缀 → 本项目 provider(公司口径)
+# 未命中的 vendor 仍纳入，provider 用原 vendor 前缀
 _VENDOR_MAP = {
     # 国内
     "deepseek": "deepseek", "qwen": "aliyun", "z-ai": "zhipu", "thudm": "zhipu",
     "moonshotai": "moonshot", "minimax": "minimax", "stepfun": "stepfun",
-    "tencent": "tencent", "baidu": "baidu", "01-ai": "yi", "baichuan": "baichuan",
+    "tencent": "tencent", "baidu": "baidu", "01-ai": "01ai", "baichuan": "baichuan",
+    "bytedance-seed": "bytedance", "bytedance": "bytedance",
+    "kwaipilot": "kuaishou", "xiaomi": "xiaomi", "meituan": "meituan",
     # 国外
     "openai": "openai", "anthropic": "anthropic", "google": "google",
-    "x-ai": "xai", "meta-llama": "meta", "mistralai": "mistral", "cohere": "cohere",
+    "x-ai": "xai", "meta-llama": "meta", "meta": "meta",
+    "mistralai": "mistral", "cohere": "cohere", "ai21": "ai21",
+    "nvidia": "nvidia", "perplexity": "perplexity", "amazon": "amazon",
+    "microsoft": "microsoft", "ibm-granite": "ibm", "upstage": "upstage",
+    "nex-agi": "nex-agi", "rekaai": "reka", "writer": "writer",
+    "allenai": "allenai", "inception": "inception",
+    # 开源 / 社区
+    "nousresearch": "nousresearch", "thedrummer": "community",
+    "sao10k": "community", "anthracite-org": "community",
+    "cognitivecomputations": "community", "gryphe": "community",
+    "arcee-ai": "arcee", "deepcogito": "deepcogito",
+    "inclusionai": "inclusionai", "poolside": "poolside",
+    "sakana": "sakana", "morph": "morph", "relace": "relace",
+    "thinkingmachines": "thinkingmachines",
 }
 
-# 已被 DeepSeek/LiteLLM 抓取器覆盖的厂商:此处跳过,避免重复渠道噪音
+# 已被官方抓取器 + LiteLLM 充分覆盖的厂商，OpenRouter 数据跳过避免重复渠道噪音
 _SKIP_PROVIDERS = {"openai", "anthropic", "google"}
 
 
@@ -43,8 +59,8 @@ class OpenRouterScraper(BaseScraper):
             if "/" not in mid or ":free" in mid:  # 跳过异常/免费变体
                 continue
             vendor_prefix = mid.split("/", 1)[0].lower()
-            provider = _VENDOR_MAP.get(vendor_prefix)
-            if provider is None or provider in _SKIP_PROVIDERS:
+            provider = _VENDOR_MAP.get(vendor_prefix, vendor_prefix)
+            if provider in _SKIP_PROVIDERS:
                 continue
 
             pricing = m.get("pricing") or {}

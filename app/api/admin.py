@@ -166,6 +166,26 @@ def get_drift(admin: dict = Depends(require_admin)):
     return report
 
 
+@router.get("/agent-config")
+def get_agent_config(admin: dict = Depends(require_admin)):
+    """视觉/Agent 模型接入配置。"""
+    return {"config": _read_json(_path("agent-config.json"), {"base_url": "", "api_key": "", "vision_model": "claude-sonnet-4-6"})}
+
+
+class AgentConfigInput(BaseModel):
+    base_url: str = ""
+    api_key: str = ""
+    vision_model: str = "claude-sonnet-4-6"
+
+
+@router.put("/agent-config")
+def update_agent_config(body: AgentConfigInput, admin: dict = Depends(require_admin)):
+    """保存视觉/Agent 模型接入配置，立即生效。"""
+    value = body.model_dump()
+    _write_json(_path("agent-config.json"), value)
+    return {"config": value}
+
+
 @router.put("/policy")
 def update_policy(body: PolicyInput, admin: dict = Depends(require_admin)):
     return {"policy": save_policy(body).model_dump()}

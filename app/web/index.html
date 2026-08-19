@@ -512,7 +512,12 @@ $('runDiscovery').addEventListener('click', async () => {
 });
 ['provider','channel','region','currency','serviceTier','modality','confidence','convert'].forEach(id => $(id).addEventListener('change', load));
 $('q').addEventListener('input', render);
-initFilters().then(() => setTab('official'));
+initFilters().then(() => {
+  // 支持 ?q= URL 参数（漂移报告的搜索链接）
+  const urlQ = new URLSearchParams(location.search).get('q');
+  if (urlQ) $('q').value = urlQ;
+  setTab('official');
+});
 </script>
 </body>
 </html>

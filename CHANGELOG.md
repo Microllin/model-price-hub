@@ -2,6 +2,26 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.7.0] - 2026-08-19
+
+### Added
+
+- 后台「模型接入」页（原「API Key」改版）：
+  - 视觉/Agent 模型接入配置：API Base URL、API Key、视觉模型名
+  - 保存后下次管线运行即生效，无需重启服务或修改环境变量
+  - 支持 Anthropic 官方 API 或任何兼容 Anthropic SDK 的代理网关
+  - API Key 存储在服务端，不回显明文；留空保持旧值
+  - 查询 API Key（对外接口认证）保留在同页下方
+- `GET/PUT /v1/admin/agent-config` API
+- vision_base.py 读取优先级：后台配置 > 环境变量 > Anthropic SDK 默认
+
+### Changed
+
+- 漂移报告易读性改进：
+  - 每个卡片增加中文解释文案（什么是孤儿模型 / 为什么单一来源 / 如何消除）
+  - 模型名可点击跳转前台价格表搜索（`/?q=模型名`）
+  - 前台支持 `?q=` URL 参数预填搜索框
+
 ## [0.6.1] - 2026-08-19
 
 ### Added

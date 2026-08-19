@@ -111,7 +111,7 @@
     <button class="tab" data-tab="policy">策略配置</button>
     <button class="tab" data-tab="sources">数据源</button>
     <button class="tab" data-tab="webhooks">Webhook</button>
-    <button class="tab" data-tab="apikeys">API Key</button>
+    <button class="tab" data-tab="apikeys">模型接入</button>
     <button class="tab" data-tab="account">账号</button>
   </nav>
   <main>
@@ -126,9 +126,9 @@
     <section class="pane" id="pane-quality">
       <div class="grid3" id="driftCards"></div>
       <div class="card"><h3>维度覆盖率（字段非空占比，低覆盖率说明抓取器还没填该维度）</h3><div id="coverageBars"></div></div>
-      <div class="card"><h3>跨源价格偏差（第三方参考价 vs 官方价，超阈值需复核）</h3><div id="driftList" class="muted">加载中…</div></div>
-      <div class="card"><h3>未匹配官方条目（仅单一来源，无法交叉验证）</h3><div id="unmatchedList" class="muted">加载中…</div></div>
-      <div class="card"><h3>孤儿模型（只有第三方旁证，无官方源）</h3><div id="orphanList" class="muted">加载中…</div></div>
+      <div class="card"><h3>跨源价格偏差</h3><p class="muted" style="font-size:12px;margin:4px 0 10px">同一模型的第三方渠道价格与官方价差超 5% 时告警。可能原因：厂商加价/补贴、抓取解析错误、单位不一致。点击模型名可在前台价格表搜索比对。</p><div id="driftList" class="muted">加载中…</div></div>
+      <div class="card"><h3>未匹配官方条目（单一来源）</h3><p class="muted" style="font-size:12px;margin:4px 0 10px">这些官方价格只有一个数据源，没有任何第三方渠道能交叉验证。可能原因：新上线的模型（LiteLLM/OpenRouter 还没收录）、模型名归一化失败（同一模型在不同源里叫不同名字）。建议关注长期未匹配的条目。</p><div id="unmatchedList" class="muted">加载中…</div></div>
+      <div class="card"><h3>孤儿模型（无官方源）</h3><p class="muted" style="font-size:12px;margin:4px 0 10px">这些模型只有第三方渠道（LiteLLM、OpenRouter 等）的旁证价格，缺少官方厂商直接抹取的价格。要消除孤儿，需要为该厂商新增官方抓取器或在「数据源」页添加其官方定价页 URL。</p><div id="orphanList" class="muted">加载中…</div></div>
       <div class="card"><h3>本轮新增 / 消失模型</h3><div id="modelDelta" class="muted">加载中…</div></div>
     </section>
 
@@ -203,10 +203,23 @@
       <div class="card"><h3>已配置端点</h3><div id="webhookList" class="muted">加载中…</div></div>
     </section>
 
-    <!-- API Key -->
+    <!-- 模型接入 -->
     <section class="pane" id="pane-apikeys">
       <div class="card">
-        <h3>创建 API Key</h3>
+        <h3>视觉 / Agent 模型接入</h3>
+        <p class="muted" style="font-size:12px;margin:0 0 14px">用于截图 OCR、页面差异、上下文研判等 Agent 任务。设置后过去显示“无视觉凭据”的抹取器将自动启用。支持 Anthropic 官方或任何兼容 Anthropic SDK 的代理网关。</p>
+        <form id="agentConfigForm">
+          <div class="grid2">
+            <div class="field"><label>API Base URL（留空则使用官方端点）</label><input class="ctrl" id="agentBaseUrl" placeholder="https://api.anthropic.com 或代理地址" style="width:100%" /></div>
+            <div class="field"><label>API Key</label><input class="ctrl" id="agentApiKey" type="password" placeholder="sk-ant-... 或网关 Token" autocomplete="new-password" style="width:100%" /></div>
+          </div>
+          <div class="field" style="margin-top:10px;max-width:320px"><label>视觉模型（截图识别使用的多模态模型）</label><input class="ctrl" id="agentModel" placeholder="claude-sonnet-4-6" style="width:100%" /></div>
+          <div class="actions"><button class="primary-btn" type="submit">保存接入配置</button><span class="muted" style="align-self:center;font-size:12px">保存后下次管线运行即生效。API Key 存储在服务端，不会回显明文。</span></div>
+        </form>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>查询 API Key（只读接口认证）</h3>
+        <p class="muted" style="font-size:12px;margin:0 0 14px">用于对外查询接口的访问控制（/v1/prices 等）。在「策略配置」中开启 api_key_required 后生效。</p>
         <form id="apiKeyForm">
           <div class="grid3">
             <div class="field"><label>名称</label><input class="ctrl" id="apiKeyName" placeholder="例如 CI 查询" style="width:100%" required /></div>
@@ -323,14 +336,16 @@ async function loadDrift() {
     <div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${esc(f)}</span><span class="${pct < 30 ? 'muted' : ''}">${pct}%</span></div>
     <div style="height:6px;background:var(--bg);border-radius:3px;margin-top:3px"><div style="height:100%;width:${pct}%;background:${pct < 30 ? 'var(--lo)' : 'var(--accent)'};border-radius:3px"></div></div></div>`).join('');
   $('driftList').innerHTML = (d.price_drift || []).map(x => driftItem(
-    `<strong>${esc(x.model)} <span class="badge">${esc(x.currency)}</span></strong>
+    `<strong><a href="/?q=${encodeURIComponent(x.model)}" target="_blank" title="在前台价格表搜索该模型">${esc(x.model)}</a> <span class="badge">${esc(x.currency)}</span></strong>
      <div class="sub">官方 ${x.official_input} → 第三方 ${x.third_party_input}（${x.drift_pct > 0 ? '+' : ''}${x.drift_pct}%）· 来源：${(x.third_party_sources || []).join('、')}</div>`
   )).join('') || '<span class="muted">无超阈值偏差。</span>';
   $('unmatchedList').innerHTML = (d.unmatched_official || []).map(x => driftItem(
-    `<strong>${esc(x.model)}</strong><div class="sub">${esc(x.provider)} · ${esc(x.source)} · ${esc(x.note)}</div>`
+    `<strong><a href="/?q=${encodeURIComponent(x.model)}" target="_blank" title="在前台搜索">${esc(x.model)}</a></strong>
+     <div class="sub">厂商：${esc(x.provider)} · 来源：${esc(x.source)} · ${esc(x.note)}</div>`
   )).join('') || '<span class="muted">无。</span>';
   $('orphanList').innerHTML = (d.orphan_models || []).map(x => driftItem(
-    `<strong>${esc(x.model)}</strong><div class="sub">厂商：${(x.providers || []).join('、')} · 来源：${(x.sources || []).join('、')}</div>`
+    `<strong><a href="/?q=${encodeURIComponent(x.model)}" target="_blank" title="在前台搜索">${esc(x.model)}</a></strong>
+     <div class="sub">第三方来源：${(x.sources || []).join('、')} · 厂商：${(x.providers || []).join('、')}</div>`
   )).join('') || '<span class="muted">无。</span>';
   $('modelDelta').innerHTML = `
     <div class="sub" style="margin-bottom:6px">生成时间：${esc(d.generated_at || '—')}</div>
@@ -426,7 +441,30 @@ $('webhookForm').addEventListener('submit', async e => {
   e.target.reset(); toast('Webhook 已保存'); loadWebhooks();
 });
 
-/* ---- API Key ---- */
+/* ---- 模型接入（视觉/Agent API 配置） ---- */
+async function loadAgentConfig() {
+  try {
+    const { config: c } = await api('/v1/admin/agent-config');
+    $('agentBaseUrl').value = c.base_url || '';
+    $('agentApiKey').value = '';  // 不回显明文，但占位提示已配置
+    $('agentApiKey').placeholder = c.api_key ? '••••• 已配置（留空保持不变）' : 'sk-ant-... 或网关 Token';
+    $('agentModel').value = c.vision_model || 'claude-sonnet-4-6';
+  } catch {}
+}
+$('agentConfigForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const body = { base_url: $('agentBaseUrl').value.trim(), vision_model: $('agentModel').value.trim() || 'claude-sonnet-4-6' };
+  const key = $('agentApiKey').value.trim();
+  if (key) body.api_key = key;  // 留空时保持旧值
+  else {
+    try { const old = (await api('/v1/admin/agent-config')).config; body.api_key = old.api_key || ''; } catch { body.api_key = ''; }
+  }
+  await api('/v1/admin/agent-config', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+  toast('模型接入配置已保存');
+  loadAgentConfig();
+});
+
+/* ---- 查询 API Key ---- */
 async function loadApiKeys() {
   const d = await api('/v1/admin/api-keys');
   $('apiKeyList').innerHTML = d.api_keys.map(k => `
@@ -471,7 +509,7 @@ async function boot() {
     const me = await api('/v1/admin/me');
     $('whoami').textContent = '管理员：' + me.username;
     showAdmin();
-    loadOverview(); loadDrift(); loadPolicy(); loadSources(); loadWebhooks(); loadApiKeys();
+    loadOverview(); loadDrift(); loadPolicy(); loadSources(); loadWebhooks(); loadAgentConfig(); loadApiKeys();
   } catch { showLogin(); }
 }
 boot();

@@ -37,6 +37,7 @@ data/drift.json
 data/admin.json
 data/admin-sessions.json
 data/api-keys.json
+data/agent-config.json
 data/policy.json
 
 # 调试/临时

@@ -22,21 +22,35 @@ from app.models.pricing import Currency, RawPrice, Region
 from app.scrapers.base import BaseScraper
 
 
+def _agent_config() -> dict:
+    """从 data/agent-config.json 读取后台配置的视觉模型凭据。"""
+    import json
+    try:
+        return json.loads((settings.data_dir / "agent-config.json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
 def _has_credentials() -> bool:
-    """视觉提取是否有可用凭据:MPH_ANTHROPIC_API_KEY,或标准 ANTHROPIC_AUTH_TOKEN /
-    ANTHROPIC_API_KEY 环境变量(后者兼容自定义网关 + Bearer token)。"""
+    """视觉提取是否有可用凭据：后台配置 > MPH_ANTHROPIC_API_KEY > 标准环境变量。"""
+    cfg = _agent_config()
     return bool(
-        settings.anthropic_api_key
+        cfg.get("api_key")
+        or settings.anthropic_api_key
         or os.environ.get("ANTHROPIC_AUTH_TOKEN")
         or os.environ.get("ANTHROPIC_API_KEY")
     )
 
 
 def _client():
-    """构造 Anthropic 客户端。显式 MPH_ANTHROPIC_API_KEY 优先;否则由 SDK 从环境读取
-    ANTHROPIC_AUTH_TOKEN / ANTHROPIC_API_KEY 与 ANTHROPIC_BASE_URL(支持自定义网关)。"""
+    """构造 Anthropic 客户端。优先级：后台 agent-config > MPH_ANTHROPIC_API_KEY > 环境变量。"""
     import anthropic
-
+    cfg = _agent_config()
+    if cfg.get("api_key"):
+        kwargs = {"api_key": cfg["api_key"]}
+        if cfg.get("base_url"):
+            kwargs["base_url"] = cfg["base_url"]
+        return anthropic.Anthropic(**kwargs)
     if settings.anthropic_api_key:
         return anthropic.Anthropic(api_key=settings.anthropic_api_key)
     return anthropic.Anthropic()
@@ -178,7 +192,7 @@ class VisionScraper(BaseScraper):
         client = _client()
         b64 = base64.standard_b64encode(png).decode("ascii")
         resp = client.messages.create(
-            model=settings.vision_model,
+            model=_agent_config().get("vision_model") or settings.vision_model,
             max_tokens=4096,
             messages=[
                 {

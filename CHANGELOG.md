@@ -2,6 +2,16 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.5.1] - 2026-08-19
+
+### Changed
+
+- 主题切换为靖蓝紫 AI 平台风格（参考 NexusAI）：
+  - 暗色：深靖蓝黑底 `#0A0E1A` + Indigo `#818CF8` 品牌色
+  - 亮色：薰衣草白底 `#F7F8FC` + Indigo `#6366F1`
+  - 字体切换为 DM Sans + Space Grotesk（数字列专用等宽字体）
+  - logo 渐变、tab 活动态阴影、标签徽章色系全部对齐紫色调
+
 ## [0.5.0] - 2026-08-19
 
 ### Changed

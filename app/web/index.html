@@ -4,30 +4,32 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <title>Model Price Hub · 大模型价格</title>
 <style>
   /* ======== 色系 ======== */
   :root {
     color-scheme: dark;
-    --bg: #0a0c11; --surface: #11151e; --surface-2: #171c28; --surface-3: #1e2535;
-    --line: #1f2738; --line-2: #2a3448;
-    --fg: #e6eaf2; --fg-2: #c8cdd8; --muted: #7e8799; --faint: #555e70;
-    --accent: #34d399; --accent-dim: #1b7a52; --accent-soft: rgba(52,211,153,.12);
-    --cny: #f0b840; --usd: #34d399;
-    --hi: #34d399; --mid: #f0b840; --lo: #f06060;
+    --bg: #0A0E1A; --surface: #101420; --surface-2: #161B2A; --surface-3: #1E2538;
+    --line: #1E2740; --line-2: #2A3454;
+    --fg: #E8ECF4; --fg-2: #CBD0DC; --muted: #7B84A0; --faint: #4D5672;
+    --accent: #818CF8; --accent-dim: #4F46E5; --accent-soft: rgba(129,140,248,.12);
+    --cny: #F0B840; --usd: #34D399;
+    --hi: #34D399; --mid: #F0B840; --lo: #F06060;
     --radius: 14px; --radius-sm: 10px;
-    --shadow: 0 4px 20px rgba(0,0,0,.4);
-    --font: "Inter", -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --shadow: 0 4px 20px rgba(0,0,0,.5);
+    --font: "DM Sans", -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: "Space Grotesk", ui-monospace, monospace;
   }
   :root[data-theme="light"] {
     color-scheme: light;
-    --bg: #f5f4f1; --surface: #ffffff; --surface-2: #f8f7f4; --surface-3: #efeee9;
-    --line: #e2e0da; --line-2: #d1cfc8;
-    --fg: #1a2030; --fg-2: #3a4050; --muted: #6b7280; --faint: #9ca3af;
-    --accent: #0d9e63; --accent-dim: #b3e8d0; --accent-soft: rgba(13,158,99,.10);
-    --cny: #b07008; --usd: #0d9e63;
-    --hi: #0d9e63; --mid: #b07008; --lo: #dc3545;
-    --shadow: 0 4px 24px rgba(0,0,0,.07);
+    --bg: #F7F8FC; --surface: #FFFFFF; --surface-2: #F1F3F9; --surface-3: #E8EBF4;
+    --line: #E2E5EE; --line-2: #CDD2DE;
+    --fg: #1A1F36; --fg-2: #3A4060; --muted: #6B7294; --faint: #9DA3BD;
+    --accent: #6366F1; --accent-dim: #C7D2FE; --accent-soft: rgba(99,102,241,.10);
+    --cny: #B07008; --usd: #0D9E63;
+    --hi: #0D9E63; --mid: #B07008; --lo: #DC3545;
+    --shadow: 0 4px 24px rgba(99,102,241,.06);
   }
 
   /* ======== 基础 ======== */
@@ -42,8 +44,8 @@
 
   /* ======== 头部 ======== */
   header { max-width: 1480px; margin: 0 auto; padding: 20px 32px 10px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .logo { width: 30px; height: 30px; border-radius: 8px; flex: none; background: linear-gradient(135deg, var(--accent), var(--accent-dim)); display: grid; place-items: center; font: 700 16px var(--font); color: #fff; }
-  :root[data-theme="light"] .logo { color: #06130d; }
+  .logo { width: 30px; height: 30px; border-radius: 8px; flex: none; background: linear-gradient(135deg, #818CF8, #4F46E5); display: grid; place-items: center; font: 700 16px var(--font); color: #fff; }
+  :root[data-theme="light"] .logo { color: #fff; }
   .htext { flex: 1; min-width: 0; }
   .htext h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.4px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid rgba(52,211,153,.28); border-radius: 999px; color: var(--accent); background: var(--accent-soft); font-size: 10.5px; font-weight: 700; }
@@ -59,7 +61,7 @@
   .seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); margin-bottom: 10px; }
   .seg-btn { padding: 6px 16px; border-radius: 8px; cursor: pointer; color: var(--muted); font: 600 12.5px var(--font); transition: all .15s; white-space: nowrap; border: 0; background: none; }
   .seg-btn:hover { color: var(--fg); }
-  .seg-btn.active { color: #fff; background: var(--accent); box-shadow: 0 1px 8px rgba(52,211,153,.25); }
+  .seg-btn.active { color: #fff; background: var(--accent); box-shadow: 0 1px 8px rgba(129,140,248,.25); }
   :root[data-theme="light"] .seg-btn.active { color: #fff; }
   .hint { color: var(--muted); font-size: 12px; margin: 0 0 12px; max-width: 900px; line-height: 1.6; }
   .pane { display: none; } .pane.on { display: block; }
@@ -110,7 +112,7 @@
   th { color: var(--faint); font-weight: 700; font-size: 10px; letter-spacing: .5px; text-transform: uppercase; cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 3; background: var(--surface); border-bottom: 2px solid var(--line); }
   th:hover { color: var(--muted); }
   th .sort-arrow { font-size: 9px; margin-left: 3px; color: var(--accent); }
-  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
   tbody tr { transition: background .08s; }
   tbody tr:hover { background: var(--accent-soft); }
   tbody tr:hover td:first-child { background: color-mix(in srgb, var(--surface) 88%, var(--accent)); }

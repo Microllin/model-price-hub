@@ -18,6 +18,7 @@ from app.scrapers.litellm_json import LiteLLMScraper
 from app.scrapers.minimax import MiniMaxScraper
 from app.scrapers.openai import OpenAIScraper
 from app.scrapers.openrouter import OpenRouterScraper
+from app.scrapers.volcengine import VolcEngineScraper
 from app.scrapers.ppio import PPIOScraper
 from app.scrapers.siliconflow import SiliconFlowScraper
 from app.scrapers.tencent import TencentScraper
@@ -44,6 +45,7 @@ def all_scrapers() -> list[BaseScraper]:
         AnthropicScraper(),       # Anthropic 官方 · USD(SSR 表,含缓存写双档/fast/batch)
         OpenAIScraper(),          # OpenAI 官方 · USD(standard/batch/flex/fast 四档)
         GoogleScraper(),          # Google Gemini 官方 · USD(分档/促销价/缓存)
+        VolcEngineScraper(),      # 火山引擎/字节 · CNY(豆包/Seed 全系,分档+常规/低延迟/批量)
         ZhipuScraper(),           # 智谱 GLM · 正则(验证 vision-zhipu)
         MiniMaxScraper(),         # MiniMax · 正则(验证 vision-minimax)
         AliyunScraper(),          # 通义千问 · 正则(SSR 大页,49 模型,保留为官方源)

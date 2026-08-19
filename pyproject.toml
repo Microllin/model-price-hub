@@ -1,6 +1,6 @@
 [project]
 name = "model-price-hub"
-version = "0.6.0"
+version = "0.6.1"
 description = "每日聚合主流大模型厂商价格(国内 CNY / 国外 USD),提供 Web API 查询"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -2,6 +2,18 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.6.1] - 2026-08-19
+
+### Added
+
+- 新增火山引擎（字节/豆包）官方抓取器：Playwright 渲染 SPA 定价页，解析 19 个模型× 3 档位 × 多分档 = 117 条精确条目。
+  - doubao-seed-evolving / 2.1-pro / 2.1-turbo / 2.0-pro / 2.0-lite / 2.0-mini / 2.0-code / 1.8 / 1.6 / 1.6-flash / 1.6-lite 等全系
+  - 服务档位：在线常规(standard) / 在线低延迟(low_latency) / 批量推理(batch)
+  - 上下文分档：[0,32k] / (32k,128k] / (128k,256k] 等（单位千token，归一为 k）
+  - 输入/输出/缓存命中（非音频）三个价格字段
+  - 视频(seedance)、图片(seedream)、embedding、精调、TPM 保障包等非 per-token 表正确跳过
+- 新增 3 个离线 fixture 测试，总计 79 个测试通过。
+
 ## [0.6.0] - 2026-08-19
 
 ### Added

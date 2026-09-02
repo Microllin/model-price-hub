@@ -16,9 +16,11 @@ import sys
 from datetime import datetime, timezone
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Callable
 
 from app.config import settings
 from app.db.session import sync_entries
+from app.db.sync_v2 import sync_v2_entries
 from app.models.canonical import is_official
 from app.models.pricing import RawPrice
 from app.pipeline.health import update_status
@@ -48,7 +50,7 @@ async def _run_scraper(scraper) -> tuple[list[RawPrice], bool]:
         return [], False
 
 
-async def collect() -> tuple[list[RawPrice], set[str]]:
+async def collect(on_progress: Callable[[str, bool, int], None] | None = None) -> tuple[list[RawPrice], set[str]]:
     scrapers = all_scrapers()
     # 渲染类抓取器各自 launch 一个 Chromium,并发跑会把整机内存撑爆(历史峰值 ~15G / OOM)。
     # 用信号量把「同时在跑的浏览器数」压到 render_concurrency(默认 1);HTTP 源不受此限,仍全并发。
@@ -69,6 +71,11 @@ async def collect() -> tuple[list[RawPrice], set[str]]:
     results: list[tuple[list[RawPrice], bool]] = []
     for scraper in scrapers:
         rows, healthy = await _guarded(scraper)
+        if on_progress is not None:
+            try:
+                on_progress(scraper.source_name, healthy, len(rows))
+            except Exception:  # 进度回调异常不影响抓取
+                pass
         if healthy:
             # source_name 与 runner 注入到 RawPrice 的 source 一致。
             results.append((rows, True))
@@ -94,11 +101,11 @@ def _pipeline_lock():
             fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 
-async def run_once(dry_run: bool = False) -> int:
+async def run_once(dry_run: bool = False, on_progress: Callable[[str, bool, int], None] | None = None) -> int:
     try:
         with _pipeline_lock():
             update_status(status="running", started_at=datetime.now(timezone.utc).isoformat(), error=None)
-            scraped, healthy_sources = await collect()
+            scraped, healthy_sources = await collect(on_progress=on_progress)
             return await _finish_run(scraped, healthy_sources, dry_run)
     except RuntimeError as exc:
         update_status(status="skipped", error=str(exc))
@@ -154,6 +161,13 @@ async def _finish_run(scraped: list[RawPrice], healthy_sources: set[str], dry_ru
 
     path = write_snapshot(entries)
     n = sync_entries(entries)
+    # v2.sqlite 是前端 serve_official 的数据源，必须和快照同轮更新，
+    # 否则抓到的新模型永远不会出现在界面上。
+    try:
+        v2 = sync_v2_entries(entries, scope_sources=set(effective_healthy))
+        print(f"🗃  v2.sqlite 同步:新增 {v2['new']} · 变更 {v2['changed']} · 下线 {v2['stale']}")
+    except Exception as exc:  # v2 同步失败不回滚已写入的快照/主库
+        print(f"⚠️ v2.sqlite 同步失败：{exc!r}", file=sys.stderr)
     # 数据质量漂移报告：新增/消失模型、未匹配官方条目、孤儿模型、跨源价格偏差、维度覆盖率
     try:
         drift = build_drift_report(entries, previous)

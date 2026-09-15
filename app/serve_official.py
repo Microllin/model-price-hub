@@ -1198,6 +1198,27 @@ def _set_repair_progress(task_id: str, **patch: Any) -> dict[str, Any]:
     return task
 
 
+def _parse_llm_json(raw: str) -> dict[str, Any] | None:
+    """从模型回复里抽出 JSON。模型常在 JSON 前后加一段说明("I'll analyze…")
+    或裹上 markdown 代码块,直接 json.loads 会失败;失败后把原文当诊断展示,
+    就会把模型的内心独白(还常常是英文)漏到后台界面上。"""
+    text = (raw or "").strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:]
+        text = text.strip()
+    start, end = text.find("{"), text.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            value = json.loads(text[start : end + 1])
+            if isinstance(value, dict):
+                return value
+        except json.JSONDecodeError:
+            pass
+    return None
+
+
 async def _capture_repair_shots(scraper: Any, limit: int = 3) -> list[bytes]:
     """给视觉修复取几张现场截图。只取前几张:一次修复没必要把整页都发给模型,
     页首通常就能看出 tab/布局变没变,张数多了纯粹烧钱。"""
@@ -1276,13 +1297,11 @@ async def _run_vision_repair(
         return
 
     _set_repair_progress(task_id, status="parsing", progress=80, message="正在解析模型返回结果")
-    text = raw.strip()
-    if text.startswith("```"):
-        text = text.strip("`").lstrip("json").strip()
-    try:
-        diag = json.loads(text)
-    except json.JSONDecodeError:
-        diag = {"diagnosis": raw[:500], "fix_suggestion": raw, "confidence": 0.3}
+    diag = _parse_llm_json(raw) or {
+        "diagnosis": "模型返回的内容无法解析，请查看详情里的原文",
+        "fix_suggestion": raw[:2000],
+        "confidence": 0.0,
+    }
     diag["repair_kind"] = "vision"
     diag["shots_used"] = len(shots)
     diag["current_config"] = config
@@ -1340,10 +1359,12 @@ async def _run_ai_repair(task_id: str, name: str, key: dict[str, Any], st: dict[
         text = raw.strip()
         if text.startswith("```"):
             text = text.strip("`").lstrip("json").strip()
-        try:
-            diag = json.loads(text)
-        except json.JSONDecodeError:
-            diag = {"diagnosis": raw[:500], "fix_suggestion": raw, "fixed_code": None, "confidence": 0.3}
+        diag = _parse_llm_json(raw) or {
+            "diagnosis": "模型返回的内容无法解析，请查看详情里的原文",
+            "fix_suggestion": raw[:2000],
+            "fixed_code": None,
+            "confidence": 0.0,
+        }
         repair = {
             "status": "suggested", "updated_at": _now(),
             "summary": diag.get("diagnosis", ""), "detail": diag,

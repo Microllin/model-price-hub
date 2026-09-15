@@ -122,6 +122,31 @@ tr:hover td { background:var(--hover); }
 .grp-bad { float:right; font-size:11px; color:var(--danger); }
 .grp-off { float:right; font-size:11px; color:var(--muted); margin-left:10px; }
 .grp-ok { float:right; font-size:11px; color:var(--success); }
+.todo-hd { font-size:14px; font-weight:600; margin:4px 0 10px; }
+.todo-n { display:inline-block; margin-left:6px; padding:1px 8px; border-radius:9px; font-size:12px;
+  background:rgba(242,79,79,.14); color:var(--danger); }
+.todo-card { display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--border);
+  border-left:3px solid var(--warning); border-radius:var(--radius); padding:14px 16px; margin-bottom:10px; }
+.todo-main { flex:1; min-width:0; }
+.todo-name { font-weight:600; font-size:14px; }
+.todo-kind { margin-left:8px; padding:1px 7px; border-radius:5px; font-size:11px; font-weight:400;
+  background:var(--accent-soft); color:var(--accent); }
+.todo-why { margin-top:4px; font-size:13px; color:var(--muted); }
+.todo-diag { margin-top:6px; font-size:12px; color:var(--faint); line-height:1.5; }
+.todo-act { display:flex; gap:8px; flex-shrink:0; }
+.todo-none { background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  padding:18px; text-align:center; color:var(--success); font-size:14px; margin-bottom:16px; }
+.off-bar { background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  padding:12px 16px; margin-bottom:6px; font-size:13px; color:var(--muted); }
+.off-n { display:inline-block; padding:1px 8px; border-radius:9px; font-size:12px;
+  background:rgba(148,163,184,.14); color:var(--muted); }
+.off-why { color:var(--faint); }
+.off-list { display:block; margin-top:4px; font-size:12px; color:var(--faint); }
+.fold { margin:18px 0 8px; }
+.fold-hd { display:flex; align-items:center; gap:8px; background:transparent; border:0; cursor:pointer;
+  color:var(--text); font:inherit; font-size:13px; font-weight:600; padding:4px 0; }
+.fold-arrow { color:var(--muted); }
+.sum-bar { margin-top:14px; font-size:12px; color:var(--muted); }
 .err-text { color:var(--danger); font-size:11px; display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
 .ts { font-size:11px; color:var(--muted); font-family:var(--mono); }
 .items-n { font-family:var(--mono); font-weight:600; color:var(--accent); }
@@ -206,9 +231,18 @@ tr:hover td { background:var(--hover); }
         <button class="btn" onclick="loadScrapers()">🔄 刷新状态</button>
         <button class="btn primary" id="runAllBtn" onclick="runAll()">⚡ 全局更新</button>
       </div>
-      <div class="overview-grid" id="scraperOverview"></div>
-      <div class="pipe-bar" id="pipeBar"></div>
-      <div class="card" style="padding:0;overflow-x:auto">
+      <!-- 待办优先:进来先看到「要我做什么」，而不是先扫 23 行表格 -->
+      <div id="todoZone"></div>
+      <div id="offZone"></div>
+
+      <div class="fold" id="okFold">
+        <button class="fold-hd" onclick="toggleOk()">
+          <span class="fold-arrow" id="okArrow">▸</span>
+          <span id="okTitle">正常运行的采集器</span>
+        </button>
+      </div>
+
+      <div class="card" id="okTable" hidden style="padding:0;overflow-x:auto">
         <table>
           <colgroup><col class="sc-status"><col class="sc-name"><col class="sc-url"><col class="sc-chain"><col class="sc-last"><col class="sc-items"><col class="sc-items"><col class="sc-act"></colgroup>
           <thead><tr>
@@ -217,6 +251,8 @@ tr:hover td { background:var(--hover); }
           <tbody id="scraperBody"></tbody>
         </table>
       </div>
+      <div class="sum-bar" id="sumBar"></div>
+      <div class="pipe-bar" id="pipeBar"></div>
     </div>
 
     <!-- ═══════ 菜单2:API Key ═══════ -->
@@ -330,11 +366,9 @@ async function loadScrapers(){
   }catch(e){ toast(e.message,'err'); }
 }
 
-function renderOverview(){
-  const total=scrapers.length, ok=scrapers.filter(s=>s.status==='ok').length, errors=scrapers.filter(s=>s.status==='error').length;
-  const rows=scrapers.reduce((sum,s)=>sum+(s.data_rows||0),0);
-  $('scraperOverview').innerHTML=`<div class="overview-card"><div class="label">脚本总数</div><div class="value">${total}</div></div><div class="overview-card"><div class="label">最近验证通过</div><div class="value" style="color:var(--success)">${ok}</div></div><div class="overview-card"><div class="label">需要处理</div><div class="value" style="color:${errors?'var(--danger)':'var(--success)'}">${errors}</div></div><div class="overview-card"><div class="label">已入库价格</div><div class="value">${rows.toLocaleString()}</div></div>`;
-}
+// 概览已并入页面底部的一行汇总(renderScrapers 里的 sumBar)。
+// 原先四张大卡占满首屏，把真正要处理的事挤到了下面。
+function renderOverview(){}
 function renderPipe(p){
   const st=p.status||'unknown';
   const cls=st==='ok'?'var(--success)':st==='failed'?'var(--danger)':st==='running'?'var(--notice)':'var(--faint)';
@@ -352,26 +386,114 @@ const SCRAPER_GROUPS=[
   {key:'script', label:'普通脚本', hint:'读网页结构取价 · AI 修复重写解析代码'},
   {key:'vision', label:'视觉识别', hint:'截图交给模型读价 · AI 修复看现场截图改截取配置'},
 ];
-function renderScrapers(){
-  if(!scrapers.length){ $('scraperBody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">无数据</td></tr>'; return; }
-  const html=SCRAPER_GROUPS.map(g=>{
-    const list=scrapers.filter(s=>(g.key==='vision')===!!s.is_vision);
-    if(!list.length) return '';
-    // unavailable 不是故障(配置性跳过)，但也不能算「正常」，单独报数
-    const bad=list.filter(s=>s.status==='error'||s.status==='warning').length;
-    const off=list.filter(s=>s.status==='unavailable'||s.status==='never').length;
-    const parts=[];
-    if(bad) parts.push(`<span class="grp-bad">${bad} 个需处理</span>`);
-    if(off) parts.push(`<span class="grp-off">${off} 个未启用</span>`);
-    const badge=parts.length?parts.join(''):'<span class="grp-ok">全部正常</span>';
-    return `<tr class="grp-row"><td colspan="8">
-        <span class="grp-name">${g.label}</span>
-        <span class="grp-count">${list.length}</span>
-        <span class="grp-hint">${g.hint}</span>${badge}
-      </td></tr>`+scraperRows(list);
-  }).join('');
-  $('scraperBody').innerHTML=html;
+// 页面按「要我做什么」组织:需要处理的排前面并给出明确的下一步，
+// 正常运行的折叠收起。此前是一张 23 行的大表 + 每行 4~6 个按钮，
+// 光看按钮认不出该点哪个。
+// 「坏了」和「没开」是两回事:前者要你去修，后者是你还没配凭据，
+// 给它一个「修复」按钮纯属误导——修复解决不了缺凭据。
+function hasFix(s){ return !!(s.repair && s.repair.has_vision_fix); }
+// 有可采用的建议就该进待办——哪怕它当前还没启用，采用建议本身就是一步可做的事
+function isDisabled(s){
+  return s.is_vision && ['unavailable','never'].includes(s.status) && !hasFix(s);
 }
+function needsAttention(s){
+  if(hasFix(s)) return true;
+  if(isDisabled(s)) return false;
+  return ['error','warning'].includes(s.status);
+}
+function daysSince(iso){
+  const d=parseTs(iso); if(!d) return null;
+  return Math.floor((Date.now()-d.getTime())/86400000);
+}
+// 一句话说清「怎么了」，不要甩状态码和英文报错
+function whatsWrong(s){
+  if(s.repair && s.repair.has_vision_fix) return 'AI 已给出修复建议，确认后即可应用';
+  if(s.is_vision && ['unavailable','never'].includes(s.status)) return '尚未启用(缺少视觉识别凭据)';
+  const d=daysSince(s.data_last_scraped);
+  const age=d===null?'':`，已 ${d} 天没更新`;
+  if(s.status==='warning') return `打得开页面但没解析出价格${age}`;
+  if(s.status==='error') return `运行报错${age}`;
+  return '需要检查';
+}
+function renderScrapers(){
+  const todo=scrapers.filter(needsAttention);
+  const off=scrapers.filter(isDisabled);
+  const ok=scrapers.filter(s=>!needsAttention(s)&&!isDisabled(s));
+
+  $('todoZone').innerHTML = todo.length ? `
+    <div class="todo-hd">需要处理 <span class="todo-n">${todo.length}</span></div>
+    ${todo.map(todoCard).join('')}` : `
+    <div class="todo-none">✅ 全部采集器运行正常，没有需要处理的</div>`;
+
+  $('offZone').innerHTML = off.length ? `
+    <div class="off-bar">
+      <span class="off-n">${off.length}</span> 个视觉识别采集器尚未启用
+      <span class="off-why">——需要先配置视觉识别凭据，配好后它们才会开始采集</span>
+      <span class="off-list">${off.map(s=>esc(s.vendor_zh||s.provider)).join('、')}</span>
+    </div>` : '';
+
+  $('okTitle').textContent=`正常运行的采集器 ${ok.length} 个`;
+  $('scraperBody').innerHTML = ok.length ? scraperRows(ok)
+    : '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--muted)">无</td></tr>';
+
+  const rows=scrapers.reduce((a,s)=>a+(s.data_rows||0),0);
+  $('sumBar').innerHTML=`共 ${scrapers.length} 个采集器 · 已入库 ${rows.toLocaleString()} 条价格`;
+}
+function todoCard(s){
+  const canApply=!!(s.repair&&s.repair.has_vision_fix);
+  const kind=s.is_vision?'视觉识别':'普通脚本';
+  const diag=s.repair&&s.repair.summary?`<div class="todo-diag">诊断:${esc(s.repair.summary).slice(0,140)}</div>`:'';
+  const btn=canApply
+    ? `<button class="btn primary sm" onclick="adoptFix('${s.name}',this)">查看并采用</button>`
+    : `<button class="btn primary sm" onclick="fixOne('${s.name}',this)">修复</button>`;
+  return `<div class="todo-card">
+    <div class="todo-main">
+      <div class="todo-name">${esc(s.vendor_zh||s.provider)} <span class="todo-kind">${kind}</span></div>
+      <div class="todo-why">${esc(whatsWrong(s))}</div>
+      ${diag}
+    </div>
+    <div class="todo-act">
+      ${btn}
+      <button class="btn sm" onclick="openDetail('${s.name}')">详情</button>
+    </div>
+  </div>`;
+}
+function toggleOk(){
+  const t=$('okTable'); t.hidden=!t.hidden;
+  $('okArrow').textContent=t.hidden?'▸':'▾';
+}
+
+// 一个按钮走到底:诊断 → 展示建议 → 采用并重跑验证。
+async function fixOne(name,btn){
+  const old=btn.textContent; btn.disabled=true; btn.textContent='诊断中…';
+  try{
+    const r=await api(`/admin/scrapers/${name}/ai-repair`,{method:'POST'});
+    for(let i=0;i<40;i++){
+      await new Promise(r=>setTimeout(r,4000));
+      const t=await api(`/admin/scrapers/${name}/ai-repair/${r.task_id}`);
+      const st=(t.status&&t.status.status)||t.status;
+      if(st==='completed'){ toast('✅ 诊断完成','ok'); await loadScrapers(); return; }
+      if(st==='failed'){ throw new Error((t.status&&t.status.message)||'诊断失败'); }
+      btn.textContent='诊断中…'+(i+1)*4+'s';
+    }
+    throw new Error('诊断超时');
+  }catch(e){ toast('诊断失败:'+(e.message||e),'err'); btn.disabled=false; btn.textContent=old; }
+}
+async function adoptFix(name,btn){
+  const s=scrapers.find(x=>x.name===name)||{};
+  const why=(s.repair&&s.repair.summary)||'';
+  if(!confirm(`AI 诊断:\n${why}\n\n将把建议的截取配置应用到「${s.vendor_zh||name}」，然后立即重跑一次验证。\n配置可随时回退。确认继续?`)) return;
+  const old=btn.textContent; btn.disabled=true;
+  try{
+    btn.textContent='应用中…';
+    await api(`/admin/scrapers/${name}/vision-config`,{method:'POST',body:'{}'});
+    btn.textContent='验证中…';
+    await api(`/admin/scrapers/${name}/run`,{method:'POST'});
+    toast('✅ 已应用并重跑，看结果是否恢复','ok');
+    await loadScrapers();
+  }catch(e){ toast('操作失败:'+(e.message||e),'err'); btn.disabled=false; btn.textContent=old; }
+}
+
 function scraperRows(list){
   return list.map(s=>{
     const chain=(s.fetch_chain||[]).map(c=>`<span class="chain-tag">${c}</span>`).join('');
@@ -387,10 +509,10 @@ function scraperRows(list){
       <td class="items-n" title="最近入库:${fmtTime(s.data_last_scraped)}">${s.data_rows??0}</td>
       <td class="items-n">${s.items??'—'}</td>
       <td><div class="hb">
-        <button class="btn sm" onclick="runOne('${s.name}',this)">▶ 运行</button>
-        <button class="btn sm" onclick="openVendor('${s.provider}')">✏️</button>
-        <button class="btn sm" onclick="openDetail('${s.name}')">📋</button>
-        ${repairBtn(s)}${visionCfgBtns(s)}
+        <button class="btn sm" onclick="runOne('${s.name}',this)">运行</button>
+        <button class="btn sm" onclick="openDetail('${s.name}')">详情</button>
+        <button class="btn sm" onclick="openVendor('${s.provider}')">厂商</button>
+        ${visionCfgBtns(s)}
       </div>${repairBadge}</td>
     </tr>`;
   }).join('');
@@ -410,13 +532,9 @@ function repairBtn(s){
 // 视觉采集器的配置落地:AI 修复只出建议，这里把建议写进运行时覆盖配置。
 // 不改代码，所以随时可回退，也不用为改几个选择器重建镜像。
 function visionCfgBtns(s){
-  if(!s.is_vision) return '';
-  const applied=!!s.vision_config;
-  const canApply=s.repair&&s.repair.has_vision_fix;
-  let html='';
-  if(canApply) html+=`<button class="btn sm" title="把 AI 给出的截取配置写入生效" onclick="applyVisionCfg('${s.name}',this)">✅ 应用建议</button>`;
-  if(applied) html+=`<button class="btn sm" title="${esc(cfgSummary(s.vision_config))}" onclick="revertVisionCfg('${s.name}',this)">↩ 回退配置</button>`;
-  return html;
+  // 正常区只保留「回退配置」——需要修的采集器都在上面的待办区，不在这张表里
+  if(!s.is_vision||!s.vision_config) return '';
+  return `<button class="btn sm" title="${esc(cfgSummary(s.vision_config))}" onclick="revertVisionCfg('${s.name}',this)">回退配置</button>`;
 }
 function cfgSummary(c){
   if(!c) return '';
@@ -628,9 +746,18 @@ async function testKey(id,btn){
 
 /* ── 工具 ── */
 function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// 后端时间戳两种都有:scraper-status 里的带 +00:00，而库里查出来的
+// data_last_scraped 是不带时区的 UTC。不统一的话后者会被当本地时间解析，
+// 在 CST 下整整差 8 小时。
+function parseTs(v){
+  if(!v) return null;
+  const hasTz=/(?:Z|[+-]\d{2}:?\d{2})$/.test(String(v).slice(10));
+  const d=new Date(hasTz?v:v+'Z');
+  return isNaN(d.getTime())?null:d;
+}
 function fmtTime(iso){
   if(!iso) return '—';
-  try{ const d=new Date(iso); return d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+  try{ const d=parseTs(iso); if(!d) return '—'; return d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
   catch(e){ return iso; }
 }
 

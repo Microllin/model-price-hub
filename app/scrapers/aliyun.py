@@ -22,16 +22,14 @@ from app.config import settings
 from app.models.pricing import Currency, RawPrice, Region
 from app.scrapers.base import BaseScraper
 
-_NAME = re.compile(r"^(qwen[\w.\-]+)$", re.I)
+# 模型名：qwen* 系列（含 VL/Audio/TTS/Embedding/Rerank 等全部模型）
+_NAME = re.compile(r"^(qwen[\w.\-]+|text-embedding[\w.\-]*)$", re.I)
 # 价格行:纯"12元",或带活动标记"原价12元 限时5折"——取行内第一个"(原价)?数字元"的数字。
 # 用刊例原价(与智谱口径一致):限时折扣是营销活动会变,原价才是稳定官方定价。
 _PRICE = re.compile(r"^(?:原价)?\s*([\d.]+)\s*元")
 _DATE_SNAPSHOT = re.compile(r"-\d{4}-\d{2}-\d{2}")
 # 阶梯行:"0<Token≤32K" / "32K<Token≤128K" / "Token>128K"
 _TIER = re.compile(r"^(?:(\d+(?:\.\d+)?\s*[KkMm]?)\s*<\s*)?Token\s*(≤|>=?|＞)\s*(\d+(?:\.\d+)?\s*[KkMm]?)?", re.I)
-# 非文本模型关键词(多模态/向量等)→ 跳过
-_SKIP = ("-vl", "vl-", "omni", "image", "audio", "tts", "asr", "ocr",
-         "embedding", "rerank", "-mt", "wan", "cosyvoice", "paraformer")
 
 
 def _norm_bound(value: str | None) -> str:
@@ -93,7 +91,7 @@ class AliyunScraper(BaseScraper):
                 continue
             name = m.group(1)
             low = name.lower()
-            if any(k in low for k in _SKIP) or _DATE_SNAPSHOT.search(name):
+            if _DATE_SNAPSHOT.search(name):
                 continue
             # 向后扫描该模型的阶梯与价格(遇到下一个模型名停止)
             tiers: list[tuple[str | None, float, float]] = []

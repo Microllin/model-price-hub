@@ -123,11 +123,54 @@ class VisionScraper(BaseScraper):
     def parse(self, text: str) -> list[RawPrice]:  # pragma: no cover
         return []
 
+    @staticmethod
+    def _should_run_vision() -> bool:
+        """检查本轮是否应该跑视觉验证。
+
+        通过 data/vision-run-counter.json 记录运行计数,
+        每第 N 次管线跑时才执行视觉 OCR(N = settings.vision_run_every_n)。
+        设为 0 彻底禁用;设为 1 每次都跑。
+
+        同一轮管线多个 VisionScraper 实例共享结果(只计数一次)。
+        """
+        import json
+        # 类级缓存:_vision_decided 在进程生命周期内只计算一次
+        if hasattr(VisionScraper, "_vision_decided"):
+            return VisionScraper._vision_decided
+
+        n = settings.vision_run_every_n
+        if n <= 0:
+            VisionScraper._vision_decided = False
+            return False
+        if n == 1:
+            VisionScraper._vision_decided = True
+            return True
+
+        counter_path = settings.data_dir / "vision-run-counter.json"
+        try:
+            data = json.loads(counter_path.read_text(encoding="utf-8"))
+            count = data.get("count", 0)
+        except (FileNotFoundError, json.JSONDecodeError):
+            count = 0
+
+        count += 1
+        should_run = (count % n == 0)
+        counter_path.write_text(
+            json.dumps({"count": count, "should_run": should_run}, indent=2),
+            encoding="utf-8",
+        )
+        VisionScraper._vision_decided = should_run
+        return should_run
+
     async def fetch(self) -> list[RawPrice]:
         if not settings.use_playwright:
             return []
         if not _has_credentials():
             print(f"  [skip] {self.__class__.__name__}: 无视觉凭据(设 ANTHROPIC_AUTH_TOKEN 或 MPH_ANTHROPIC_API_KEY),跳过")
+            return []
+        # 视觉频率控制:每 N 次管线运行才跑一次视觉 OCR,减少 token 消耗
+        if not self._should_run_vision():
+            print(f"  [skip] {self.__class__.__name__}: 视觉验证本轮跳过(每 {settings.vision_run_every_n} 轮跑一次)")
             return []
         # 边截图边提取，不把长页面的所有 PNG 同时留在内存中。
         results: dict[str, RawPrice] = {}

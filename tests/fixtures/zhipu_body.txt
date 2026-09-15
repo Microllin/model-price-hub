@@ -1,5 +1,14 @@
-GLM-5.2
+旗舰模型
+文本模型
+视觉理解
+GLM-5.3
 新品
+1M
+8元
+28元
+限时免费
+2元
+GLM-5.2
 1M
 8元
 28元
@@ -14,11 +23,371 @@ GLM-5.1
 输入长度 [32+)
 8元
 28元
+限时免费
+2元
 GLM-5-Turbo
 输入长度 [0, 32)
 5元
 22元
+限时免费
+1.2元
+输入长度 [32+)
+7元
+26元
+限时免费
+1.8元
 GLM-5
 输入长度 [0, 32)
 4元
 18元
+限时免费
+1元
+输入长度 [32+)
+6元
+22元
+限时免费
+1.5元
+GLM-4.7
+输入长度 [0, 32)
+输出长度 [0, 0.2)
+2元
+8元
+限时免费
+0.4元
+输入长度 [0, 32)
+输出长度 [0.2+)
+3元
+14元
+限时免费
+0.6元
+输入长度 [32, 200)
+4元
+16元
+限时免费
+0.8元
+GLM-4.5-Air
+输入长度 [0, 32)
+输出长度 [0, 0.2)
+0.8元
+2元
+限时免费
+0.16元
+输入长度 [0, 32)
+输出长度 [0.2+)
+0.8元
+6元
+限时免费
+0.16元
+输入长度 [32, 128)
+1.2元
+8元
+限时免费
+0.24元
+GLM-4.7-FlashX
+200K
+0.5元
+3元
+限时免费
+0.1元
+GLM-4.7-Flash
+200K
+免费
+免费
+免费
+免费
+视觉理解
+GLM-5V-Turbo
+新品
+输入长度 [0, 32)
+5元
+22元
+限时免费
+1.2元
+图片、视频
+文件、文本
+输入长度 [32+)
+7元
+26元
+限时免费
+1.8元
+图片、视频
+文件、文本
+GLM-4.6V
+输入长度 [0, 32)
+1元
+3元
+限时免费
+0.2元
+图片、视频
+文件、文本
+输入长度 [32, 128)
+2元
+6元
+限时免费
+0.4元
+图片、视频
+文件、文本
+GLM-4.6V-FlashX
+输入长度 [0, 32)
+0.15元
+1.5元
+限时免费
+0.03元
+图片、视频
+文件、文本
+输入长度 [32, 128)
+0.3元
+3元
+限时免费
+0.03元
+图片、视频
+文件、文本
+GLM-4.6V-Flash
+/
+免费
+免费
+免费
+免费
+图片、视频
+文件、文本
+GLM-4.5V
+输入长度 [0, 32)
+2元
+6元
+限时免费
+0.4元
+图片、视频
+文件、文本
+输入长度 [32, 64)
+4元
+12元
+限时免费
+0.8元
+图片、视频
+文件、文本
+模型推理
+Language Models
+Reasoning models
+Multimodal Models
+Real-time
+Embedding Models
+More
+Model	Description	Context	Pricing	Pricing with Batch API
+GLM-4-Plus
+Flagship
+128K
+¥5 / M Tokens
+¥2.5 / M Tokens
+GLM-4-Air
+High-performance
+128K
+¥0.5 / M Tokens
+¥0.25 / M Tokens
+GLM-4-AirX
+Fastest
+8K
+¥10 / M Tokens
+Not Supported
+GLM-4-FlashX-250414
+Fast and Cheap
+128K
+¥0.1 / M Tokens
+¥0.05 / M Tokens
+GLM-4-Long
+Long input
+1M
+¥1 / M Tokens
+¥0.5 / M Tokens
+GLM-4-Assistant
+Agent
+128K
+¥5 / M Tokens
+Not Supported
+Reasoning models
+Model	Description	Context	Pricing
+GLM-Z1-Air
+High-performance
+128K
+¥0.5 / M Tokens
+GLM-Z1-AirX
+Fastest
+32K
+¥5 / M Tokens
+GLM-Z1-FlashX
+Fast and Cheap
+128K
+¥0.1 / M Tokens
+GLM-4.1V-Thinking-FlashX
+Visual Reasoning
+64K
+¥2 / M Tokens
+Multimodal Models
+Model	Description	Context/Resolution	Pricing	Pricing with Batch API
+GLM-4V-Plus-0111
+Image & Video recognition
+8K
+¥4 / M Tokens
+¥2 / M Tokens
+CogView-4
+Image generation
+multiple resolutions
+¥0.06 / per request
+¥0.03 / per request
+CogVideoX-2
+Video generation
+multiple resolutions
+¥0.5 / per request
+¥0.25 / per request
+CogVideoX-3
+Video generation
+multiple resolutions
+¥1 / per request
+not supported
+Real-time
+Model	Description	Pricing	Supported Modalities
+CogTTS
+Speech Model
+¥4/10K Chats
+Text
+CogTTS-Clone
+Voice Cloning
+¥6/per request
+Text, Audio
+GLM-4-Voice
+Speech Model
+¥80 / M Tokens
+Text, Audio
+GLM-ASR
+Speech Recognition
+¥0.06 / minute
+Audio
+Embedding Models
+Model	Description	Context	Pricing	Pricing with Batch API
+Embedding-3
+V3
+8K
+¥0.5 / M Tokens
+¥0.25 / M Tokens
+Embedding-2
+V2
+8K
+¥0.5 / M Tokens
+¥0.25 / M Tokens
+More
+Model	Description	Context	Pricing
+CharGLM-4
+Role-playing
+8K
+¥1 / M Tokens
+Emohaa
+Psychological
+8K
+¥15 / M Tokens
+CodeGeeX-4
+Code generation
+128K
+¥0.1 / M Tokens
+Rerank
+Re-ranking Model
+4K
+¥0.8 / M Tokens
+搜索工具服务
+Tool Name	Introduction	Pricing
+Search-Std
+Zhipu self-developed search basic version
+¥0.01 / time
+Search-Pro
+Zhipu self-developed search Pro version
+¥0.03 / time
+Search-Pro-Sogou
+Sogou Search
+¥0.05 / time
+Search-Pro-Quark
+Quark Search
+¥0.05 / time
+知识库扩容服务
+Product Name	Description	Price
+knowledge_capacity
+Knowledge Base Expansion Service
+¥0.04 / GB / hour
+模型微调
+Model Training
+Model Inference
+Model	Training Version	Pricing with LoRA	Pricing with Full
+GLM-4.5
+32k
+¥0.1 / 1k tokens
+Not Supported
+GLM-4.5
+16k
+Not Supported
+¥0.125 / 1k tokens
+GLM-4.5-Air
+32k
+¥0.035 / 1k tokens
+¥0.05 / 1k tokens
+GLM-4-Air
+8k
+¥0.03 / 1k tokens
+¥0.05 / 1k tokens
+GLM-4-AirX
+8k
+¥0.03 / 1k tokens
+¥0.05 / 1k tokens
+GLM-4-Flash
+8k
+¥0.025 / 1k tokens
+¥0.04 / 1k tokens
+GLM-4-9B
+8k
+¥0.025 / 1k tokens
+¥0.04 / 1k tokens
+ChatGLM3-6B
+8k
+¥0.025 / 1k tokens
+Not Supported
+Cogview-3
+1k
+Not Supported
+¥0.02 / 1k tokens
+GLM-4V
+2k
+¥0.03 / 1k tokens
+Not Supported
+模型微调
+Model Training
+Model Inference
+Model	Deployment Version	Public Instance	Private Instance
+GLM-4-Air
+8k-int8
+¥0.003 / 1k tokens
+¥100 / GPU Unit / Day
+GLM-4-AirX
+8k-int4
+¥0.03 / 1k tokens
+¥100 / GPU Unit / Day
+GLM-4-Flash
+8k-int8
+¥0.002 / 1k tokens
+¥100 / GPU Unit / Day
+GLM-4-9B
+8k-int8
+¥0.002 / 1k tokens
+¥100 / GPU Unit / Day
+ChatGLM3-6B
+8k-int8
+¥0.002 / 1k tokens
+Not Supported
+Cogview-3
+Image Generation-fp16
+Not Supported
+¥100 / GPU Unit / Day
+GLM-4V
+Image input-int8
+Not Supported
+¥200 / GPU Unit / Day
+GLM-4-0520
+8k-int8
+¥0.5 / 1k tokens
+¥100 / GPU Unit / Day
+模型私有实例

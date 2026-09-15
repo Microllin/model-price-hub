@@ -3,3 +3,33 @@ MiniMax-M3	> 512k 输入 tokens 永久五折	8.40 4.20	33.60 16.80	1.68 0.84
 MiniMax-M2.7	2.1	8.4	0.42	2.625
 MiniMax-M2.7-highspeed	4.2	16.8	0.42	2.625
 MiniMax-Hailuo-2.3	文生视频，768P 6s	2.00
+语音
+计费项	模型	接口说明	单价 元/万字符
+同步语音合成 T2A	speech-2.8-hd	支持音量、语调、语速调整	3.5
+同步语音合成 T2A	speech-2.8-turbo	支持音量、语调、语速调整	2
+异步长文本语音合成 T2A Async	speech-2.8-hd	支持异步生成	3.5
+异步长文本语音合成 T2A Async	speech-2.8-turbo	支持异步生成	2
+计费项	模型	接口说明	单价 元/音色
+音色设计 Voice Design	所有模型	支持基于描述 prompt 生成音色	9.9
+快速复刻 Voice Cloning	所有模型	基于大语言模型的音色克隆	9.9
+视频
+视频生成-输出价格
+模型/接口	分辨率	计费规则	刊例价
+MiniMax-H3	2K	按秒计费	0.80 元/秒
+MiniMax-H3	768P	按秒计费	0.50 元/秒
+视频再生成-输出价格
+模型/接口	分辨率	计费规则	刊例价
+MiniMax-H3-Regeneration	768P → 2K	按视频再生成输出秒数计费	0.30 元/秒
+H3-Context-IR 任务价格
+模型/接口	输入价格	输出价格
+MiniMax-H3-Context-IR	5.80 元/百万 tokens	23.00 元/百万 tokens
+图像
+模型	接口说明	单价 元/张
+image-01	支持文本描述或参考图片生成图片	0.025
+image-01-live	支持文本描述或参考图片生成图片	0.025
+MCP
+模型	接口说明	输入价格 元/次
+API-vlm	通过 Token Plan MCP 插件或工具自带的视觉接口调用	0.025
+服务端工具
+服务端工具	接口说明	单价 元/次
+web_search	联网搜索	0.03

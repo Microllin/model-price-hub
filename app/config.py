@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     schedule_hour: int = 3
     schedule_minute: int = 17
 
+    # 视觉抓取频率(每 N 次管线运行才跑一次视觉 OCR 验证,减少 token 消耗)。
+    # 设为 1 则每次都跑(旧行为);设为 0 则彻底禁用视觉。默认 5 = 3天×5 = 15 天验证一次。
+    vision_run_every_n: int = 5
+
     # ---- 汇率(仅用于 ?convert= 的近似换算,原生货币始终是 source of truth)----
     usd_to_cny: float = 7.15
 

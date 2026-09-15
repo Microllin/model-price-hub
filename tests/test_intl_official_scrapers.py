@@ -8,6 +8,8 @@ from app.models.pricing import Currency, Region
 from app.scrapers.anthropic import AnthropicScraper
 from app.scrapers.google import GoogleScraper
 from app.scrapers.openai import OpenAIScraper
+from app.scrapers.cohere import CohereScraper
+from app.scrapers.amazon import AmazonBedrockScraper
 from tests.conftest import read_fixture
 
 
@@ -116,3 +118,33 @@ def test_google_skips_non_gemini_and_non_token():
     rows = GoogleScraper().parse(read_fixture("google_pricing.html"))
     assert not _by(rows, "imagen-4")  # 图像生成按张计费,跳过
     assert all(r.model.startswith(("gemini", "gemma")) for r in rows)
+
+
+def test_cohere_embedded_rich_text_pricing_is_plain_script_parseable():
+    html = """
+    <ul>
+      <li>Command pricing is $1.00/1M tokens for input and $2.00/1M tokens for output</li>
+      <li>Command-light pricing is $0.30/1M tokens for input and $0.60/1M tokens for output</li>
+    </ul>
+    """
+    rows = CohereScraper().parse(html)
+    assert [(r.model, r.input_per_1m, r.output_per_1m) for r in rows] == [
+        ("command", 1.0, 2.0),
+        ("command-light", 0.3, 0.6),
+    ]
+
+
+def test_amazon_bedrock_model_column_is_not_provider_column():
+    html = """
+    <h2>Amazon Nova</h2>
+    <table>
+      <thead><tr><th>Provider</th><th>Model Name</th>
+      <th>Price per 1M input tokens</th><th>Price per 1M output tokens</th></tr></thead>
+      <tbody><tr><td>Amazon</td><td>Amazon Nova 2 Lite</td><td>$0.30</td><td>$2.50</td></tr></tbody>
+    </table>
+    """
+    rows = AmazonBedrockScraper().parse(html)
+    assert len(rows) == 1
+    assert rows[0].model == "nova-2-lite"
+    assert rows[0].input_per_1m == 0.3
+    assert rows[0].output_per_1m == 2.5

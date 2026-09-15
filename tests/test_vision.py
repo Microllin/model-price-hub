@@ -20,7 +20,16 @@ def test_per_1k_unit_converted_to_per_1m():
 def test_per_1m_kept_and_fields_mapped():
     js = ('{"rows": [{"model": "Kimi K2.7 Code", "input_price": 6.5, "output_price": 27, '
           '"cache_read_price": 1.0, "unit": "per_1m", "context_window": 262144}]}')
-    rows = KimiScraper().rows_to_prices(js)
+
+    class DummyKimi(VisionScraper):
+        provider = "moonshot"; channel = "official"; source_url = "http://x"
+        region = Region.CN; currency = Currency.CNY
+        def map_model(self, shown: str) -> str:
+            import re
+            s = shown.strip().lower()
+            return re.sub(r"\s+", "-", s)
+
+    rows = DummyKimi().rows_to_prices(js)
     r = rows[0]
     assert r.provider == "moonshot" and r.channel == "official"
     assert r.region == Region.CN and r.currency == Currency.CNY
@@ -40,14 +49,20 @@ def test_bad_json_and_empty_rows_are_safe():
 
 
 def test_fetch_skips_without_api_key(monkeypatch):
-    # 无任何凭据时 fetch 返回空,不报错
+    # Kimi 现在不用 Playwright/Anthropic，而是 HTTP 直取 .md，fetch 应正常工作
+    # 这里测试 VisionScraper 基类在无凭据时的行为
     import asyncio
     from app import config
+
+    class DummyVision(VisionScraper):
+        provider = "test"; source_url = "http://x"
+        region = Region.CN; currency = Currency.CNY
+
     monkeypatch.setattr(config.settings, "use_playwright", True)
     monkeypatch.setattr(config.settings, "anthropic_api_key", None)
     monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    assert asyncio.run(KimiScraper().fetch()) == []
+    assert asyncio.run(DummyVision().fetch()) == []
 
 
 def test_via_vision_field():

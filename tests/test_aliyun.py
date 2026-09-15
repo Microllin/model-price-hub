@@ -65,7 +65,7 @@ qwen-plus
     assert tiers == {"0-32k": (2.5, 10.0), "32k-128k": (3.0, 12.0), ">128k": (6.0, 24.0)}
 
 
-def test_skips_date_snapshots_and_multimodal():
+def test_skips_date_snapshots_but_keeps_multimodal():
     rows = {r.model for r in AliyunScraper().parse(_BODY)}
     assert "qwen3-max-2026-01-23" not in rows   # 日期快照跳过(留主别名)
-    assert "qwen3-vl-plus" not in rows           # 多模态 vl 跳过
+    assert "qwen3-vl-plus" in rows               # 多模态 vl 现在也要抓取

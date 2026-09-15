@@ -71,7 +71,9 @@ class GoogleScraper(BaseScraper):
     source_url = "https://ai.google.dev/gemini-api/docs/pricing"
 
     async def urls(self) -> list[str]:
-        return [self.source_url]
+        # Google 会按出口/请求头自动返回中文翻译页；解析器依赖英文表头和标题，
+        # 固定 hl=en，避免同一官方 URL 因地区语言导致本次解析为 0 条。
+        return [f"{self.source_url}?hl=en"]
 
     def parse(self, text: str) -> list[RawPrice]:
         results: list[RawPrice] = []

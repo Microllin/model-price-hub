@@ -1161,12 +1161,24 @@ async def _call_llm(key: dict[str, Any], prompt: str, images: list[bytes] | None
             "temperature": 0.2,
         }
         headers = {"Authorization": f"Bearer {key['api_key']}", "content-type": "application/json"}
-        endpoint = f"{base}/chat/completions"
+        # 与 anthropic 分支同口径补全 /v1。base_url 填成站点根地址(不带 /v1)很常见，
+        # 而不少网关对未知路径会返回 200 + 前端 HTML，raise_for_status 放行、解析 JSON
+        # 才报错，排查时只看到一句 JSONDecodeError，极难定位。
+        endpoint = (
+            f"{base}/chat/completions" if base.endswith("/v1") else f"{base}/v1/chat/completions"
+        )
 
     async with httpx.AsyncClient(timeout=90) as cli:
         resp = await cli.post(endpoint, headers=headers, json=payload)
         resp.raise_for_status()
-        data = resp.json()
+        try:
+            data = resp.json()
+        except ValueError:
+            ctype = resp.headers.get("content-type", "")
+            raise RuntimeError(
+                f"接口返回的不是 JSON(HTTP {resp.status_code} · {ctype} · {len(resp.content)} 字节)。"
+                f"多半是 base_url 写错导致打到了网页而不是 API:{endpoint}"
+            ) from None
         if protocol == "anthropic":
             blocks = data.get("content") or []
             text = "".join(block.get("text", "") for block in blocks if block.get("type") == "text")

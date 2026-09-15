@@ -45,7 +45,22 @@ data/policy.json
 *.log
 tests/fixtures/screenshots/
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
 # IDE / OS
 .idea/
 .vscode/
 .DS_Store
+
+# 凭据与运行期状态(绝不入库)
+data/llm-keys.json
+data/repair-tasks.json
+data/scraper-status.json
+data/vendor-info.json
+
+# schema_v2 生成库(与 data/prices.db 同性质)
+data/v2.sqlite
+data/v2.sqlite-*
+data/v2.sqlite.bak-*

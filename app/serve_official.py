@@ -30,6 +30,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
 import hmac
 import json
@@ -1093,16 +1094,35 @@ def _llm_protocol(key: dict[str, Any]) -> str:
     return "anthropic" if "anthropic" in base or model.startswith("claude") else "openai"
 
 
-async def _call_llm(key: dict[str, Any], prompt: str) -> str:
-    """按 Key 配置调用 Anthropic Messages 或 OpenAI 兼容协议。"""
+async def _call_llm(key: dict[str, Any], prompt: str, images: list[bytes] | None = None) -> str:
+    """按 Key 配置调用 Anthropic Messages 或 OpenAI 兼容协议。
+
+    images 非空时走多模态:视觉抓取器的修复必须让模型看见页面现在长什么样,
+    只给配置和报错它无从判断该截哪块、该点哪个 tab。
+    """
     base = (key.get("base_url") or "https://api.openai.com/v1").rstrip("/")
     model = key.get("model") or "gpt-4o-mini"
     protocol = _llm_protocol(key)
+    shots = images or []
     if protocol == "anthropic":
+        if shots:
+            content: Any = [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/png",
+                        "data": base64.standard_b64encode(png).decode("ascii"),
+                    },
+                }
+                for png in shots
+            ] + [{"type": "text", "text": prompt}]
+        else:
+            content = prompt
         payload = {
             "model": model,
             "max_tokens": int(key.get("max_tokens") or 8192),
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [{"role": "user", "content": content}],
         }
         headers = {
             "x-api-key": key["api_key"],
@@ -1111,9 +1131,22 @@ async def _call_llm(key: dict[str, Any], prompt: str) -> str:
         }
         endpoint = f"{base}/v1/messages" if not base.endswith("/v1") else f"{base}/messages"
     else:
+        if shots:
+            oa_content: Any = [
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "data:image/png;base64,"
+                        + base64.standard_b64encode(png).decode("ascii")
+                    },
+                }
+                for png in shots
+            ] + [{"type": "text", "text": prompt}]
+        else:
+            oa_content = prompt
         payload = {
             "model": model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [{"role": "user", "content": oa_content}],
             "temperature": 0.2,
         }
         headers = {"Authorization": f"Bearer {key['api_key']}", "content-type": "application/json"}
@@ -1142,12 +1175,121 @@ def _set_repair_progress(task_id: str, **patch: Any) -> dict[str, Any]:
     return task
 
 
+async def _capture_repair_shots(scraper: Any, limit: int = 3) -> list[bytes]:
+    """给视觉修复取几张现场截图。只取前几张:一次修复没必要把整页都发给模型,
+    页首通常就能看出 tab/布局变没变,张数多了纯粹烧钱。"""
+    shots: list[bytes] = []
+    async for png in scraper._capture():
+        shots.append(png)
+        if len(shots) >= limit:
+            break
+    return shots
+
+
+async def _run_vision_repair(
+    task_id: str, name: str, key: dict[str, Any], st: dict[str, Any], meta: dict[str, Any]
+) -> None:
+    """视觉抓取器的修复:不改解析代码,改「截哪儿、点哪儿、怎么问」。
+
+    与脚本修复的区别在于喂给模型的东西:脚本修复给源码,视觉修复必须给现场截图——
+    视觉路径本来就不依赖 DOM 结构,它坏掉通常是截错了区域或该点的 tab 没点到,
+    只看配置和报错无从判断。
+    """
+    scraper = next((x for x in _official_scrapers() if x.source_name == name), None)
+    if scraper is None:
+        _set_repair_progress(task_id, status="failed", progress=100, message=f"未找到抓取器: {name}")
+        return
+
+    _set_repair_progress(task_id, status="collecting", progress=15, message="正在截取页面现状")
+    try:
+        shots = await _capture_repair_shots(scraper)
+    except Exception as exc:
+        _set_repair_progress(
+            task_id, status="failed", progress=100, message=f"截图失败:{exc!r}"[:200]
+        )
+        return
+    if not shots:
+        _set_repair_progress(task_id, status="failed", progress=100, message="没截到任何画面,无法诊断")
+        return
+
+    config = {
+        "source_url": getattr(scraper, "source_url", ""),
+        "screenshot_urls": list(getattr(scraper, "screenshot_urls", []) or []),
+        "tab_selectors": list(getattr(scraper, "tab_selectors", []) or []),
+        "max_shots_per_page": getattr(scraper, "max_shots_per_page", None),
+    }
+    prompt = f"""你是网页视觉采集的调试专家。下面是某厂商官方定价页的实拍截图(按滚动顺序)。
+这个采集器靠截图 + 多模态模型读价格,现在没读出数据。
+
+【采集器】{name}({meta.get('class', '')})
+【当前配置】
+{json.dumps(config, ensure_ascii=False, indent=2)}
+【最近状态】{st.get('status', '')} · {st.get('error') or st.get('message') or '(无错误信息)'}
+
+请对照截图判断问题出在哪,并给出可直接落到配置里的修正。注意:
+- 若价格表需要先点某个 tab/按钮才显示,请从截图里读出它的准确文案
+- 若截图根本没拍到价格区(太靠上/太靠下/被弹窗挡住),请说明该怎么调整
+- 若页面已改版到没有价格表,请直说,不要编造选择器
+
+只输出 JSON(不要 markdown 代码块):
+{{
+  "diagnosis": "根因(中文,一句话)",
+  "page_changed": true/false,
+  "price_table_visible": true/false,
+  "suggested_tab_selectors": ["从截图里读到的 tab 文案,没有则空数组"],
+  "suggested_screenshot_urls": ["若应改截别的 URL 则给出,否则空数组"],
+  "fix_suggestion": "具体怎么改(中文)",
+  "confidence": 0.0-1.0
+}}"""
+
+    _set_repair_progress(
+        task_id, status="calling_llm", progress=40, message=f"已截 {len(shots)} 张,正在请模型看图诊断"
+    )
+    try:
+        raw = await _call_llm(key, prompt, images=shots)
+    except Exception as exc:
+        _set_repair_progress(task_id, status="failed", progress=100, message=f"模型调用失败:{exc!r}"[:200])
+        return
+
+    _set_repair_progress(task_id, status="parsing", progress=80, message="正在解析模型返回结果")
+    text = raw.strip()
+    if text.startswith("```"):
+        text = text.strip("`").lstrip("json").strip()
+    try:
+        diag = json.loads(text)
+    except json.JSONDecodeError:
+        diag = {"diagnosis": raw[:500], "fix_suggestion": raw, "confidence": 0.3}
+    diag["repair_kind"] = "vision"
+    diag["shots_used"] = len(shots)
+    diag["current_config"] = config
+
+    repair = {
+        "status": "suggested",
+        "kind": "vision",
+        "updated_at": _now(),
+        "summary": diag.get("diagnosis", ""),
+        "detail": diag,
+        "llm_key": key.get("name"),
+        "task_id": task_id,
+    }
+    tasks = _read_json(REPAIR_TASKS_PATH, {})
+    tasks[name] = repair
+    _write_json(REPAIR_TASKS_PATH, tasks)
+    _set_repair_progress(
+        task_id, status="completed", progress=100,
+        message=diag.get("diagnosis", "诊断完成"), result=diag,
+    )
+
+
 async def _run_ai_repair(task_id: str, name: str, key: dict[str, Any], st: dict[str, Any]) -> None:
     """后台执行 AI 诊断；HTTP 请求不等待 LLM 完成。"""
     try:
+        meta = next((m for m in _scraper_registry() if m["name"] == name), {})
+        if meta.get("is_vision"):
+            await _run_vision_repair(task_id, name, key, st, meta)
+            return
         _set_repair_progress(task_id, status="collecting", progress=15, message="读取脚本源码和最近错误")
         code = _scraper_source_path(name).read_text(encoding="utf-8")[:12000]
-        meta = next((m for m in _scraper_registry() if m["name"] == name), {})
         prompt = f"""你是爬虫修复专家。以下 Python 抓取器从厂商官方定价页采集模型价格,现在失败了。
 
 【脚本名】{name}({meta.get('class','')})
@@ -1202,7 +1344,11 @@ async def admin_ai_repair(name: str, admin: dict = Depends(require_admin)):
     if scraper is None:
         raise HTTPException(404, f"未找到抓取器: {name}")
     st = _normalize_probe_status(scraper, _status_store().get(name, {}))
-    if not st.get("error") and st.get("status") not in {"warning", "error"}:
+    is_vision = getattr(scraper, "source_name", "").startswith("vision-") or "vision" in type(scraper).__name__.lower()
+    # 视觉采集器额外放行 unavailable / never:它们「没产出」往往正是要诊断的对象
+    # (没配凭据被跳过、或截不到价格区),而截图诊断本身只需要 Playwright，不需要视觉凭据。
+    allowed = {"warning", "error"} | ({"unavailable", "never"} if is_vision else set())
+    if not st.get("error") and st.get("status") not in allowed:
         raise HTTPException(400, "该脚本没有可诊断的异常或空结果记录")
     key = _pick_llm_key("repair")
     if not key:

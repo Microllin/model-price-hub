@@ -114,6 +114,14 @@ tr:hover td { background:var(--hover); }
 .url-link { color:var(--muted); font-size:11.5px; text-decoration:none; font-family:var(--mono); }
 .url-link:hover { color:var(--accent); }
 .chain-tag { display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; background:var(--accent-soft); color:var(--accent); margin-right:3px; font-family:var(--mono); }
+.grp-row td { background:var(--card2); padding:10px 14px; border-top:1px solid var(--border); }
+.grp-name { font-weight:600; font-size:13px; }
+.grp-count { display:inline-block; margin-left:8px; padding:1px 7px; border-radius:5px; font-size:11px;
+  background:var(--accent-soft); color:var(--accent); }
+.grp-hint { margin-left:12px; font-size:11px; color:var(--muted); }
+.grp-bad { float:right; font-size:11px; color:var(--danger); }
+.grp-off { float:right; font-size:11px; color:var(--muted); margin-left:10px; }
+.grp-ok { float:right; font-size:11px; color:var(--success); }
 .err-text { color:var(--danger); font-size:11px; display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
 .ts { font-size:11px; color:var(--muted); font-family:var(--mono); }
 .items-n { font-family:var(--mono); font-weight:600; color:var(--accent); }
@@ -337,9 +345,35 @@ function renderPipe(p){
     ${p.error?`<span style="color:var(--danger)">⚠ ${esc(p.error).slice(0,120)}</span>`:''}`;
 }
 
+// 后台按采集方式分两类。两类都支持 AI 修复，但修的东西不同:
+// 普通脚本读网页结构，修的是解析代码;视觉识别靠截图让模型读价，
+// 修的是「截哪儿、点哪儿、怎么问」——所以它的修复会把现场截图一并发给模型。
+const SCRAPER_GROUPS=[
+  {key:'script', label:'普通脚本', hint:'读网页结构取价 · AI 修复重写解析代码'},
+  {key:'vision', label:'视觉识别', hint:'截图交给模型读价 · AI 修复看现场截图改截取配置'},
+];
 function renderScrapers(){
   if(!scrapers.length){ $('scraperBody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">无数据</td></tr>'; return; }
-  $('scraperBody').innerHTML=scrapers.map(s=>{
+  const html=SCRAPER_GROUPS.map(g=>{
+    const list=scrapers.filter(s=>(g.key==='vision')===!!s.is_vision);
+    if(!list.length) return '';
+    // unavailable 不是故障(配置性跳过)，但也不能算「正常」，单独报数
+    const bad=list.filter(s=>s.status==='error'||s.status==='warning').length;
+    const off=list.filter(s=>s.status==='unavailable'||s.status==='never').length;
+    const parts=[];
+    if(bad) parts.push(`<span class="grp-bad">${bad} 个需处理</span>`);
+    if(off) parts.push(`<span class="grp-off">${off} 个未启用</span>`);
+    const badge=parts.length?parts.join(''):'<span class="grp-ok">全部正常</span>';
+    return `<tr class="grp-row"><td colspan="8">
+        <span class="grp-name">${g.label}</span>
+        <span class="grp-count">${list.length}</span>
+        <span class="grp-hint">${g.hint}</span>${badge}
+      </td></tr>`+scraperRows(list);
+  }).join('');
+  $('scraperBody').innerHTML=html;
+}
+function scraperRows(list){
+  return list.map(s=>{
     const chain=(s.fetch_chain||[]).map(c=>`<span class="chain-tag">${c}</span>`).join('');
     const note=s.error||s.message||'';
     const err=note?`<span class="err-text" style="color:${s.status==='error'?'var(--danger)':'var(--muted)'}" title="${esc(note)}">${s.status==='error'?'⚠':'ℹ'} ${esc(note).slice(0,64)}</span>`:'';
@@ -356,10 +390,21 @@ function renderScrapers(){
         <button class="btn sm" onclick="runOne('${s.name}',this)">▶ 运行</button>
         <button class="btn sm" onclick="openVendor('${s.provider}')">✏️</button>
         <button class="btn sm" onclick="openDetail('${s.name}')">📋</button>
-        <button class="btn sm danger" ${s.status!=='error'?'disabled title="仅确认执行异常后可修复"':''} onclick="aiRepair('${s.name}',this)">🤖 AI脚本修复</button>
+        ${repairBtn(s)}
       </div>${repairBadge}</td>
     </tr>`;
   }).join('');
+}
+
+// 与后端 admin_ai_repair 的门槛保持一致:普通脚本需 error/warning;
+// 视觉采集器额外放行 unavailable/never——「没产出」本身就是要诊断的对象。
+function repairBtn(s){
+  const vision=!!s.is_vision;
+  const ok=['error','warning'].includes(s.status)||(vision&&['unavailable','never'].includes(s.status));
+  const label=vision?'🖼 AI视觉修复':'🤖 AI脚本修复';
+  const tip=vision?'看现场截图诊断截取配置':'读脚本源码诊断解析逻辑';
+  const dis=ok?'':' disabled title="当前状态无需修复"';
+  return `<button class="btn sm danger"${dis} title="${esc(tip)}" onclick="aiRepair('${s.name}',this)">${label}</button>`;
 }
 
 function repairTag(r){

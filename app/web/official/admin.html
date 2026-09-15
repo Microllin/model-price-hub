@@ -58,12 +58,9 @@ textarea.ctrl { height:auto; padding:8px 12px; resize:vertical; }
   cursor:pointer; border:0; border-left:2px solid transparent; background:transparent; }
 .menu-item:hover { color:#fff; background:rgba(255,255,255,.05); }
 .menu-item.active { color:#fff; border-left-color:var(--brand-300); background:rgba(57,169,245,.08); font-weight:600; }
-.menu-item .ico { width:16px; text-align:center; }
-.side-foot { margin-top:22px; padding:12px 0 0; border-top:1px solid #223650; }
-/* 底部三项同样平铺，不再是三个带框按钮堆在一起 */
-.side-foot button { width:100%; margin-bottom:2px; justify-content:flex-start; padding:9px 12px;
-  background:transparent; color:#93a7c2; border-radius:0; }
-.side-foot button:hover { background:rgba(255,255,255,.05); color:#fff; }
+
+/* 底部三项与一级菜单完全同构:同样的 .menu-item，只靠一条分隔线区隔 */
+.side-foot { margin-top:22px; padding-top:12px; border-top:1px solid #223650; }
 
 .main { flex:1; min-width:0; padding:30px clamp(18px,4vw,48px) 60px; }
 .main-hdr { display:flex; align-items:center; gap:12px; margin-bottom:22px; flex-wrap:wrap; }
@@ -221,15 +218,15 @@ tr:hover td { background:var(--hover); }
       <div><b>定价中心后台</b><span>Price Hub Admin</span></div>
     </div>
     <div class="menu-item active" data-pane="scrapers" onclick="switchPane('scrapers')">
-      <span class="ico">🕷️</span><span class="txt">脚本爬取</span>
+      <span class="txt">脚本爬取</span>
     </div>
     <div class="menu-item" data-pane="keys" onclick="switchPane('keys')">
-      <span class="ico">🔑</span><span class="txt">API Key</span>
+      <span class="txt">API Key</span>
     </div>
     <div class="side-foot">
-      <button class="btn sm" id="themeBtn" onclick="toggleTheme()" style="width:100%">☀️ 切换主题</button>
-      <button class="btn sm" onclick="location.href='/'" style="width:100%">🏠 前台首页</button>
-      <button class="btn sm danger" onclick="logout()" style="width:100%">退出登录</button>
+      <div class="menu-item" id="themeBtn" onclick="toggleTheme()">切换主题</div>
+      <div class="menu-item" onclick="location.href='/'">前台首页</div>
+      <div class="menu-item" onclick="logout()">退出登录</div>
     </div>
   </aside>
 
@@ -237,11 +234,11 @@ tr:hover td { background:var(--hover); }
     <!-- ═══════ 菜单1:脚本爬取 ═══════ -->
     <div class="pane active" id="pane-scrapers">
       <div class="main-hdr">
-        <h2>🕷️ 脚本爬取</h2>
+        <h2>脚本爬取</h2>
         <span class="desc">官方定价页采集脚本 · 状态监控 · AI 修复</span>
         <div class="spacer"></div>
-        <button class="btn" onclick="loadScrapers()">🔄 刷新状态</button>
-        <button class="btn primary" id="runAllBtn" onclick="runAll()">⚡ 全局更新</button>
+        <button class="btn" onclick="loadScrapers()">刷新状态</button>
+        <button class="btn primary" id="runAllBtn" onclick="runAll()">全局更新</button>
       </div>
       <!-- 待办优先:进来先看到「要我做什么」，而不是先扫 23 行表格 -->
       <div id="todoZone"></div>
@@ -270,7 +267,7 @@ tr:hover td { background:var(--hover); }
     <!-- ═══════ 菜单2:API Key ═══════ -->
     <div class="pane" id="pane-keys">
       <div class="main-hdr">
-        <h2>🔑 API Key 管理</h2>
+        <h2>API Key 管理</h2>
         <span class="desc">LLM Key 用于:脚本 AI 修复 · Playwright 页面监控 · 视觉 OCR 兜底</span>
         <div class="spacer"></div>
         <button class="btn primary" onclick="openKeyModal()">＋ 录入 Key</button>
@@ -332,7 +329,7 @@ tr:hover td { background:var(--hover); }
     <div id="detailBody"></div>
     <div class="actions">
       <button class="btn" onclick="document.getElementById('detailModal').style.display='none'">关闭</button>
-      <button class="btn success" id="applyFixBtn" style="display:none" onclick="applyFix()">✅ 应用 AI 修复代码</button>
+      <button class="btn success" id="applyFixBtn" style="display:none" onclick="applyFix()">应用 AI 修复代码</button>
     </div>
   </div>
 </div>
@@ -342,8 +339,8 @@ tr:hover td { background:var(--hover); }
 <script>
 const $ = id => document.getElementById(id);
 function toast(msg, cls=''){ const el=$('toast'); el.textContent=msg; el.className='toast show '+cls; setTimeout(()=>el.className='toast',3200); }
-function toggleTheme(){ const d=document.documentElement.classList.toggle('dark'); localStorage.setItem('theme',d?'dark':'light'); $('themeBtn').textContent=d?'☀️ 切换主题':'🌙 切换主题'; }
-$('themeBtn').textContent = document.documentElement.classList.contains('dark')?'☀️ 切换主题':'🌙 切换主题';
+function toggleTheme(){ const d=document.documentElement.classList.toggle('dark'); localStorage.setItem('theme',d?'dark':'light'); $('themeBtn').textContent='切换主题'; }
+$('themeBtn').textContent='切换主题';
 
 async function api(path, opts={}){
   const r = await fetch('/api'+path, {headers:{'Content-Type':'application/json'}, ...opts});
@@ -396,7 +393,7 @@ function renderPipe(p){
     <span><span class="lbl">管线状态:</span> <span class="val" style="color:${cls}">${st}</span></span>
     <span><span class="lbl">最近更新:</span> <span class="val">${fmtTime(p.updated_at)}</span></span>
     ${p.started_at?`<span><span class="lbl">开始:</span> <span class="val">${fmtTime(p.started_at)}</span></span>`:''}
-    ${p.error?`<span style="color:var(--danger)">⚠ ${esc(p.error).slice(0,120)}</span>`:''}`;
+    ${p.error?`<span style="color:var(--danger)">${esc(p.error).slice(0,120)}</span>`:''}`;
 }
 
 // 后台按采集方式分两类。两类都支持 AI 修复，但修的东西不同:
@@ -443,7 +440,7 @@ function renderScrapers(){
   $('todoZone').innerHTML = todo.length ? `
     <div class="todo-hd">需要处理 <span class="todo-n">${todo.length}</span></div>
     ${todo.map(todoCard).join('')}` : `
-    <div class="todo-none">✅ 全部采集器运行正常，没有需要处理的</div>`;
+    <div class="todo-none">全部采集器运行正常，没有需要处理的</div>`;
 
   $('offZone').innerHTML = off.length ? `
     <div class="off-bar">
@@ -492,7 +489,7 @@ async function fixOne(name,btn){
       await new Promise(r=>setTimeout(r,4000));
       const t=await api(`/admin/scrapers/${name}/ai-repair/${r.task_id}`);
       const st=(t.status&&t.status.status)||t.status;
-      if(st==='completed'){ toast('✅ 诊断完成','ok'); await loadScrapers(); return; }
+      if(st==='completed'){ toast('诊断完成','ok'); await loadScrapers(); return; }
       if(st==='failed'){ throw new Error((t.status&&t.status.message)||'诊断失败'); }
       btn.textContent='诊断中…'+(i+1)*4+'s';
     }
@@ -509,7 +506,7 @@ async function adoptFix(name,btn){
     await api(`/admin/scrapers/${name}/vision-config`,{method:'POST',body:'{}'});
     btn.textContent='验证中…';
     await api(`/admin/scrapers/${name}/run`,{method:'POST'});
-    toast('✅ 已应用并重跑，看结果是否恢复','ok');
+    toast('已应用并重跑，看结果是否恢复','ok');
     await loadScrapers();
   }catch(e){ toast('操作失败:'+(e.message||e),'err'); btn.disabled=false; btn.textContent=old; }
 }
@@ -518,7 +515,7 @@ function scraperRows(list){
   return list.map(s=>{
     const chain=(s.fetch_chain||[]).map(c=>`<span class="chain-tag">${c}</span>`).join('');
     const note=s.error||s.message||'';
-    const err=note?`<span class="err-text" style="color:${s.status==='error'?'var(--danger)':'var(--muted)'}" title="${esc(note)}">${s.status==='error'?'⚠':'ℹ'} ${esc(note).slice(0,64)}</span>`:'';
+    const err=note?`<span class="err-text" style="color:${s.status==='error'?'var(--danger)':'var(--muted)'}" title="${esc(note)}">${esc(note).slice(0,64)}</span>`:'';
     const repairBadge=s.repair?repairTag(s.repair):'';
     return `<tr>
       <td><span class="dot ${STATUS_DOT[s.status]||'never'}"></span>${STATUS_TXT[s.status]||s.status}</td>
@@ -543,7 +540,7 @@ function scraperRows(list){
 function repairBtn(s){
   const vision=!!s.is_vision;
   const ok=['error','warning'].includes(s.status)||(vision&&['unavailable','never'].includes(s.status));
-  const label=vision?'🖼 AI视觉修复':'🤖 AI脚本修复';
+  const label=vision?'AI视觉修复':'AI脚本修复';
   const tip=vision?'看现场截图诊断截取配置':'读脚本源码诊断解析逻辑';
   const dis=ok?'':' disabled title="当前状态无需修复"';
   return `<button class="btn sm danger"${dis} title="${esc(tip)}" onclick="aiRepair('${s.name}',this)">${label}</button>`;
@@ -568,7 +565,7 @@ async function applyVisionCfg(name,btn){
   btn.disabled=true; const old=btn.textContent; btn.textContent='应用中…';
   try{
     const r=await api(`/admin/scrapers/${name}/vision-config`,{method:'POST',body:'{}'});
-    toast(`✅ 已应用:${cfgSummary(r.applied)}`,'ok');
+    toast(`已应用:${cfgSummary(r.applied)}`,'ok');
     await loadScrapers();
   }catch(e){ toast('应用失败:'+(e.message||e),'err'); btn.disabled=false; btn.textContent=old; }
 }
@@ -577,7 +574,7 @@ async function revertVisionCfg(name,btn){
   btn.disabled=true; const old=btn.textContent; btn.textContent='回退中…';
   try{
     await api(`/admin/scrapers/${name}/vision-config`,{method:'DELETE'});
-    toast('↩ 已回退到默认配置','ok');
+    toast('已回退到默认配置','ok');
     await loadScrapers();
   }catch(e){ toast('回退失败:'+(e.message||e),'err'); btn.disabled=false; btn.textContent=old; }
 }
@@ -598,14 +595,14 @@ async function fetchModels(){
 function repairTag(r){
   const m={diagnosing:['诊断中…','var(--notice)'],suggested:['已有修复建议','var(--success)'],applied:['已应用','var(--success)'],failed:['修复失败','var(--danger)']};
   const [txt,color]=m[r.status]||[r.status,'var(--muted)'];
-  return `<div style="font-size:10.5px;color:${color};margin-top:3px">🤖 ${txt}${r.summary?' · '+esc(r.summary).slice(0,40):''}</div>`;
+  return `<div style="font-size:10.5px;color:${color};margin-top:3px">${txt}${r.summary?' · '+esc(r.summary).slice(0,40):''}</div>`;
 }
 
 async function runOne(name,btn){
   btn.disabled=true; btn.innerHTML='<span class="spin">⏳</span> 运行中';
   try{
     const r=await api(`/admin/scrapers/${name}/run`,{method:'POST'});
-    toast(r.ok?`✅ ${name}: ${r.items} 条,${r.duration_ms}ms`:`❌ ${name}: ${r.error||'失败'}`, r.ok?'ok':'err');
+    toast(r.ok?`${name}: ${r.items} 条,${r.duration_ms}ms`:`${name}: ${r.error||'失败'}`, r.ok?'ok':'err');
   }catch(e){ toast(e.message,'err'); }
   finally{ btn.disabled=false; btn.innerHTML='▶ 运行'; loadScrapers(); }
 }
@@ -617,7 +614,7 @@ async function runAll(){
   try{
     const r=await api('/admin/scrapers/run-all',{method:'POST'});
     if(!r.ok){ toast(r.error||'启动失败','err'); return; }
-    toast('⚡ 全局更新已启动,后台运行中…','ok');
+    toast('全局更新已启动,后台运行中…','ok');
     btn.disabled=true;
     pollRunAll();
   }catch(e){ toast(e.message,'err'); }
@@ -633,11 +630,11 @@ function pollRunAll(){
         loadScrapers();
       }else{
         clearInterval(runAllTimer); runAllTimer=null;
-        btn.disabled=false; btn.innerHTML='⚡ 全局更新';
+        btn.disabled=false; btn.innerHTML='全局更新';
         toast(`全局更新完成:${s.success}/${s.total} 成功`, s.success<s.total?'err':'ok');
         loadScrapers();
       }
-    }catch(e){ clearInterval(runAllTimer); runAllTimer=null; $('runAllBtn').disabled=false; $('runAllBtn').innerHTML='⚡ 全局更新'; }
+    }catch(e){ clearInterval(runAllTimer); runAllTimer=null; $('runAllBtn').disabled=false; $('runAllBtn').innerHTML='全局更新'; }
   },3000);
 }
 
@@ -646,10 +643,10 @@ async function aiRepair(name,btn){
   btn.disabled=true; btn.innerHTML='<span class="spin">⏳</span> 诊断中';
   try{
     const r=await api(`/admin/scrapers/${name}/ai-repair`,{method:'POST'});
-    toast('🤖 诊断完成:'+(r.repair.summary||''),'ok');
+    toast('诊断完成:'+(r.repair.summary||''),'ok');
     // 结果写回当前行状态，不通过二级弹窗承载 AI 修复流程。
   }catch(e){ toast(e.message,'err'); }
-  finally{ btn.disabled=false; btn.innerHTML='🤖 AI脚本修复'; loadScrapers(); }
+  finally{ btn.disabled=false; btn.innerHTML='AI脚本修复'; loadScrapers(); }
 }
 
 let detailName='';
@@ -662,7 +659,7 @@ async function openDetail(name){
     if(st.error) html+=`<h4 style="color:var(--danger);font-size:13px;margin:10px 0 6px">错误信息</h4><pre>${esc(st.error)}\n${esc(st.traceback||'')}</pre>`;
     if(rep.detail){
       const dt=rep.detail;
-      html+=`<h4 style="color:var(--success);font-size:13px;margin:14px 0 6px">🤖 AI 诊断(置信度 ${dt.confidence??'?'})</h4>
+      html+=`<h4 style="color:var(--success);font-size:13px;margin:14px 0 6px">AI 诊断(置信度 ${dt.confidence??'?'})</h4>
         <pre>根因:${esc(dt.diagnosis||'')}\n页面是否变更:${dt.page_changed?'是':'否'}\n\n修复建议:\n${esc(dt.fix_suggestion||'')}</pre>`;
       if(dt.fixed_code){ html+=`<h4 style="font-size:13px;margin:10px 0 6px">修复后代码(点击「应用」写回,自动备份原文件)</h4><pre>${esc(dt.fixed_code.slice(0,3000))}${dt.fixed_code.length>3000?'\n…(截断)':''}</pre>`; $('applyFixBtn').style.display=''; }
       else $('applyFixBtn').style.display='none';
@@ -678,7 +675,7 @@ async function applyFix(){
   if(!confirm(`将 AI 修复代码写回「${detailName}」的脚本文件?\n原文件会自动备份。`)) return;
   try{
     const r=await api(`/admin/scrapers/${detailName}/apply-fix`,{method:'POST'});
-    toast('✅ 已应用,备份:'+r.backup,'ok');
+    toast('已应用,备份:'+r.backup,'ok');
     $('detailModal').style.display='none'; loadScrapers();
   }catch(e){ toast(e.message,'err'); }
 }
@@ -720,9 +717,9 @@ function renderKeys(){
         <div style="margin-top:5px">${(k.purposes||[]).map(p=>`<span class="purpose-tag">${PURPOSE_TXT[p]||p}</span>`).join('')}</div>
       </div>
       <div class="hb">
-        <button class="btn sm" onclick="testKey('${k.id}',this)">🔌 测试</button>
-        <button class="btn sm" onclick="editKey('${k.id}')">✏️ 编辑</button>
-        <button class="btn sm danger" onclick="delKey('${k.id}')">🗑</button>
+        <button class="btn sm" onclick="testKey('${k.id}',this)">测试</button>
+        <button class="btn sm" onclick="editKey('${k.id}')">编辑</button>
+        <button class="btn sm danger" onclick="delKey('${k.id}')">删除</button>
       </div>
     </div>`).join('');
 }
@@ -772,9 +769,9 @@ async function testKey(id,btn){
   btn.disabled=true; btn.innerHTML='<span class="spin">⏳</span>';
   try{
     const r=await api(`/admin/llm-keys/${id}/test`,{method:'POST'});
-    toast(r.ok?`✅ 连通正常:${r.reply||''}`:`❌ ${r.error}`, r.ok?'ok':'err');
+    toast(r.ok?`连通正常:${r.reply||''}`:`${r.error}`, r.ok?'ok':'err');
   }catch(e){ toast(e.message,'err'); }
-  finally{ btn.disabled=false; btn.innerHTML='🔌 测试'; }
+  finally{ btn.disabled=false; btn.innerHTML='测试'; }
 }
 
 /* ── 工具 ── */

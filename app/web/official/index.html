@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>官方模型定价中心</title>
+<script>
+// 主题初始化(避免闪烁)
+(function(){try{var t=localStorage.getItem('theme');if(t==='light'){document.documentElement.classList.remove('dark')}else{document.documentElement.classList.add('dark')}}catch(e){}})();
+</script>
+<style>
+/* ═══════════ DELTIC AI 品牌色系(与主站 3002 一致) ═══════════ */
+:root {
+  --brand-300:#39A9F5; --brand-400:#1688E8; --brand-500:#0B5ED7; --brand-600:#0A4CB8;
+  --success:#3AD186; --danger:#F24F4F; --warning:#FF733C; --notice:#F7C530;
+  --radius:10px;
+  --font: Inter,Roboto,'Noto Sans SC',system-ui,sans-serif;
+  --mono: 'JetBrains Mono',Consolas,monospace;
+}
+/* 白天 */
+html:not(.dark) {
+  color-scheme: light;
+  --bg:#F3F6FA; --card:#FFFFFF; --card2:#F8FAFD; --thead:#F0F4F9;
+  --border:#E2E8F2; --border2:#D0D9E6;
+  --text:#172033; --muted:#667085; --faint:#98A2B3;
+  --accent:#0B5ED7; --accent-soft:rgba(11,94,215,.08);
+  --hover:rgba(11,94,215,.04);
+  --shadow:0 1px 3px rgba(6,21,47,.06);
+}
+/* 黑夜 */
+html.dark {
+  color-scheme: dark;
+  --bg:#030C1D; --card:#0A1B36; --card2:#0D2142; --thead:#0E2F63;
+  --border:#14305C; --border2:#1D4278;
+  --text:#E8F0FB; --muted:#8CA3C7; --faint:#5A7199;
+  --accent:#39A9F5; --accent-soft:rgba(57,169,245,.12);
+  --hover:rgba(57,169,245,.06);
+  --shadow:0 1px 3px rgba(0,0,0,.3);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--font); background:var(--bg); color:var(--text); transition:background .25s,color .25s; }
+
+/* ── 顶栏 ── */
+.hdr { background:linear-gradient(135deg,#06152F 0%,#082B66 60%,#0B5ED7 130%); padding:22px 32px 16px; border-bottom:1px solid rgba(255,255,255,.08); }
+html:not(.dark) .hdr { background:linear-gradient(135deg,#06152F 0%,#082B66 60%,#0B5ED7 130%); color:#fff; }
+.hdr-in { max-width:1560px; margin:0 auto; }
+.hdr-top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.hdr h1 { font-size:20px; font-weight:700; color:#fff; display:flex; align-items:center; gap:10px; }
+.hdr h1 .logo { width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#1688E8,#39A9F5);display:inline-flex;align-items:center;justify-content:center;font-size:16px; }
+.hdr .sub { color:rgba(255,255,255,.55); font-size:12px; margin-top:6px; }
+.hdr .spacer { flex:1; }
+.hdr-btn { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); color:#fff; padding:6px 13px; border-radius:8px; font-size:12px; cursor:pointer; transition:all .15s; font-family:var(--font); }
+.hdr-btn:hover { background:rgba(255,255,255,.2); }
+.hdr-btn a { color:#fff; text-decoration:none; }
+
+/* KPI */
+.kpis { display:flex; gap:12px; margin-top:14px; flex-wrap:wrap; }
+.kpi { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1); border-radius:var(--radius); padding:9px 18px; min-width:104px; }
+.kpi .v { font-size:20px; font-weight:700; color:#7CC2FF; font-family:var(--mono); }
+.kpi .l { font-size:11px; color:rgba(255,255,255,.5); margin-top:1px; }
+
+/* ── 厂商栏 ── */
+.vendor-bar { background:var(--card); border-bottom:1px solid var(--border); padding:12px 32px; }
+.vb-in { max-width:1560px; margin:0 auto; display:flex; gap:6px; flex-wrap:wrap; }
+.vbtn { padding:5px 13px; border-radius:99px; border:1px solid var(--border2); background:transparent; color:var(--muted); font-size:12px; cursor:pointer; transition:all .15s; white-space:nowrap; font-family:var(--font); }
+.vbtn:hover { border-color:var(--accent); color:var(--text); }
+.vbtn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+.vbtn .cnt { font-size:10px; opacity:.65; margin-left:4px; font-family:var(--mono); }
+
+/* ── 主体 ── */
+.container { max-width:1560px; margin:0 auto; padding:16px 32px 40px; }
+.filter-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
+.filter-row select, .filter-row input {
+  background:var(--card); color:var(--text); border:1px solid var(--border2);
+  padding:7px 11px; border-radius:8px; font-size:13px; outline:none; font-family:var(--font);
+}
+.filter-row select:focus, .filter-row input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.filter-row input { width:220px; }
+.clear-btn { background:none; border:1px solid var(--border2); color:var(--muted); padding:7px 13px; border-radius:8px; font-size:12px; cursor:pointer; font-family:var(--font); }
+.clear-btn:hover { color:var(--text); border-color:var(--accent); }
+.field-menu-wrap { position:relative; }
+.field-menu { position:absolute; top:calc(100% + 8px); right:0; z-index:20; width:220px; padding:12px; border:1px solid var(--border2); border-radius:10px; background:var(--card); box-shadow:0 14px 30px rgba(3,12,29,.22); }
+.field-menu[hidden] { display:none; }
+.field-menu-title { font-size:11px; color:var(--muted); margin-bottom:8px; }
+.field-menu label { display:flex; align-items:center; gap:8px; padding:6px 4px; font-size:12px; cursor:pointer; border-radius:6px; }
+.field-menu label:hover { background:var(--hover); }
+.field-menu input { accent-color:var(--accent); }
+.cache-cell { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+.cache-term { display:inline-flex; padding:1px 6px; border-radius:4px; font-size:10px; color:var(--warning); background:rgba(255,115,60,.12); line-height:1.5; }
+.sort-head { border:0; background:transparent; color:inherit; padding:0; cursor:pointer; font:inherit; }
+
+/* ═══════════ 表格(修复对齐:fixed layout + 列宽定义) ═══════════ */
+.tbl-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); background:var(--card); box-shadow:var(--shadow); }
+table { width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; min-width:1280px; }
+/* 列宽统一在此定义,thead/tbody 严格对齐 */
+col.col-vendor { width:150px; }
+col.col-model { width:210px; }
+col.col-modality { width:86px; }
+col.col-context { width:100px; }
+col.col-currency { width:64px; }
+col.col-billing { width:82px; }
+col.col-tier { width:92px; }
+col.col-window { width:170px; }
+col.col-input, col.col-output, col.col-cacheRead, col.col-cacheWrite { width:96px; }
+col.col-source { width:110px; }
+thead th {
+  background:var(--thead); color:var(--muted); text-align:left;
+  padding:10px 12px; font-weight:600; font-size:11px; letter-spacing:.4px;
+  border-bottom:2px solid var(--border2); white-space:nowrap; overflow:hidden;
+  position:sticky; top:0; z-index:2; cursor:pointer; user-select:none;
+}
+thead th:hover { color:var(--text); }
+thead th .arrow { font-size:9px; margin-left:3px; opacity:.5; }
+thead th.sorted .arrow { opacity:1; color:var(--accent); }
+tbody td {
+  padding:8px 12px; border-bottom:1px solid var(--border);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; vertical-align:middle;
+}
+tbody tr:hover td { background:var(--hover); }
+tbody tr.vendor-sep td { border-top:2px solid var(--border2); }
+.num { text-align:right; font-family:var(--mono); font-size:12.5px; }
+th.num { text-align:right; }
+.p-in  { color:var(--success); font-weight:600; }
+.p-out { color:var(--accent); font-weight:600; }
+.p-cache { color:var(--faint); }
+.vendor-cell { font-weight:600; color:var(--accent); }
+.vendor-cell .en { display:block; font-size:10px; color:var(--faint); font-weight:400; }
+.model-cell { font-weight:600; font-family:var(--mono); font-size:12.5px; }
+.ctx { font-size:11px; color:var(--muted); font-family:var(--mono); }
+
+/* 标签 */
+.tag { display:inline-block; padding:1px 7px; border-radius:5px; font-size:11px; font-weight:500; line-height:1.6; }
+.tag.cny { background:rgba(255,115,60,.12); color:var(--warning); }
+.tag.usd { background:rgba(58,209,134,.12); color:var(--success); }
+.tag.bu  { background:var(--accent-soft); color:var(--accent); }
+.tag.tier { background:rgba(148,163,184,.12); color:var(--muted); }
+.tag.tw-off  { background:rgba(57,169,245,.14); color:var(--brand-300); }
+.tag.tw-peak { background:rgba(255,115,60,.14); color:var(--warning); }
+.tw-detail { font-size:10px; color:var(--faint); margin-left:4px; font-family:var(--mono); }
+.src-link { font-size:11px; color:var(--muted); text-decoration:none; }
+.src-link:hover { color:var(--accent); text-decoration:underline; }
+
+/* 底部分页 */
+.info-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.count { font-size:13px; color:var(--muted); }
+.pager { display:flex; gap:8px; align-items:center; }
+.pager button { background:var(--card); color:var(--text); border:1px solid var(--border2); padding:5px 13px; border-radius:7px; cursor:pointer; font-size:12px; font-family:var(--font); }
+.pager button:hover:not(:disabled) { border-color:var(--accent); }
+.pager button:disabled { opacity:.35; cursor:default; }
+.pager span { font-size:12px; color:var(--muted); font-family:var(--mono); }
+.empty { text-align:center; padding:48px; color:var(--muted); }
+.pager-foot { display:flex; justify-content:center; margin-top:14px; }
+
+@media (max-width:768px){ .hdr,.vendor-bar,.container{ padding-left:16px; padding-right:16px; } }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-in">
+    <div class="hdr-top">
+      <h1><span class="logo">¥</span><span data-i18n="title">官方模型定价中心</span></h1>
+      <div class="spacer"></div>
+      <button class="hdr-btn" id="langBtn" onclick="toggleLang()">EN</button>
+      <button class="hdr-btn" id="themeBtn" onclick="toggleTheme()">☀️</button>
+      <button class="hdr-btn"><a href="/admin" data-i18n="admin">后台管理</a></button>
+    </div>
+    <div class="sub" data-i18n="subtitle">数据来源:各厂商官网定价页,由爬虫脚本定期采集,不含 LiteLLM / OpenRouter 等聚合平台</div>
+    <div class="kpis" id="kpis"></div>
+  </div>
+</div>
+
+<div class="vendor-bar"><div class="vb-in" id="vendorBar"></div></div>
+
+<div class="container">
+  <div class="filter-row" id="filters"></div>
+  <div class="info-row">
+    <div class="count" id="count"></div>
+    <div class="pager" id="pager"></div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <colgroup id="priceCols"></colgroup>
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="pager-foot"><div class="pager" id="pager2"></div></div>
+</div>
+
+<script>
+/* ═══════════ i18n ═══════════ */
+const I18N = {
+  zh: {
+    title:'官方模型定价中心', subtitle:'数据来源:各厂商官网定价页,由爬虫脚本定期采集,不含 LiteLLM / OpenRouter 等聚合平台',
+    admin:'后台管理', vendors:'厂商', models:'模型', prices:'官方价格', sources:'爬虫源',
+    all:'全部', allModality:'全部模态', allCurrency:'全部币种', allBilling:'全部计费',
+    searchPh:'🔍 搜索模型名…', clear:'清除筛选',
+    thVendor:'厂商', thModel:'模型', thModality:'模态', thCtx:'上下文', thCurrency:'币种', thBilling:'计费',
+    thTier:'服务档', thTimeWindow:'时段', thInput:'输入价', thOutput:'输出价', thCacheR:'缓存读', thCacheW:'缓存写', thSource:'来源',
+    totalPrefix:'共', totalSuffix:'条官方定价', empty:'暂无匹配数据',
+    prev:'← 上页', next:'下页 →', offpeak:'🌙 闲时', peak:'☀️ 忙时', fields:'显示字段', fieldsHint:'选择要显示的列',
+    modalityText:'文本', modalityMultimodal:'多模态', modalityImage:'图像', modalityVideo:'视频',
+    modalityAudio:'音频', modalityTts:'语音合成', modalitySearch:'搜索', modalityTraining:'训练',
+    modalityStorage:'存储', modalityMcp:'MCP',
+  },
+  en: {
+    title:'Official Model Pricing', subtitle:'Pricing scraped from vendor official pages. No LiteLLM / OpenRouter aggregator data.',
+    admin:'Admin', vendors:'Vendors', models:'Models', prices:'Official Prices', sources:'Scrapers',
+    all:'All', allModality:'All modalities', allCurrency:'All currencies', allBilling:'All units',
+    searchPh:'🔍 Search model…', clear:'Clear filters',
+    thVendor:'Vendor', thModel:'Model', thModality:'Modality', thCtx:'Context', thCurrency:'Cur', thBilling:'Unit',
+    thTier:'Tier', thTimeWindow:'Time Window', thInput:'Input', thOutput:'Output', thCacheR:'Cache R', thCacheW:'Cache W', thSource:'Source',
+    totalPrefix:'', totalSuffix:'official prices', empty:'No matching data',
+    prev:'← Prev', next:'Next →', offpeak:'🌙 Off-peak', peak:'☀️ Peak', fields:'Fields', fieldsHint:'Choose visible columns',
+    modalityText:'text', modalityMultimodal:'multimodal', modalityImage:'image', modalityVideo:'video',
+    modalityAudio:'audio', modalityTts:'tts', modalitySearch:'search', modalityTraining:'training',
+    modalityStorage:'storage', modalityMcp:'mcp',
+  }
+};
+let lang = localStorage.getItem('lang') || 'zh';
+function t(k){ return (I18N[lang]&&I18N[lang][k]) || I18N.zh[k] || k; }
+function toggleLang(){ lang = lang==='zh'?'en':'zh'; localStorage.setItem('lang',lang); applyI18n(); renderAll(); }
+function applyI18n(){
+  document.documentElement.lang = lang==='zh'?'zh-CN':'en';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.dataset.i18n); });
+  document.getElementById('langBtn').textContent = lang==='zh'?'EN':'中文';
+}
+function modalityLabel(m){
+  const key = 'modality'+m.charAt(0).toUpperCase()+m.slice(1);
+  return lang==='zh' ? (I18N.zh[key]||m) : m;
+}
+
+/* ═══════════ 主题 ═══════════ */
+function toggleTheme(){
+  const html = document.documentElement;
+  const dark = html.classList.toggle('dark');
+  localStorage.setItem('theme', dark?'dark':'light');
+  updateThemeBtn();
+}
+function updateThemeBtn(){
+  document.getElementById('themeBtn').textContent = document.documentElement.classList.contains('dark')?'☀️':'🌙';
+}
+
+/* ═══════════ 数据 ═══════════ */
+const API='/api', PAGE_SIZE=200;
+let state={vendor:'',modality:'',currency:'',billing_unit:'',q:'',sort:'vendor',offset:0};
+let vendors=[], overviewData={};
+
+async function init(){
+  applyI18n(); updateThemeBtn();
+  const [ov,vl] = await Promise.all([
+    fetch(`${API}/overview`).then(r=>r.json()),
+    fetch(`${API}/vendors`).then(r=>r.json()),
+  ]);
+  overviewData=ov; vendors=vl;
+  renderAll();
+}
+function renderAll(){ renderKPIs(); renderVendorBar(); renderFilters(); renderFieldMenu(); loadPrices(); }
+
+function renderKPIs(){
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="v">${overviewData.vendors}</div><div class="l">${t('vendors')}</div></div>
+    <div class="kpi"><div class="v">${overviewData.models}</div><div class="l">${t('models')}</div></div>
+    <div class="kpi"><div class="v">${overviewData.prices}</div><div class="l">${t('prices')}</div></div>
+    <div class="kpi"><div class="v">${overviewData.sources.length}</div><div class="l">${t('sources')}</div></div>`;
+}
+
+function vendorName(v){ return lang==='zh' ? (v.zh||v.name) : v.name; }
+
+function renderVendorBar(){
+  let html=`<button class="vbtn ${state.vendor===''?'active':''}" onclick="pickVendor('')">${t('all')}<span class="cnt">${vendors.reduce((a,v)=>a+v.prices,0)}</span></button>`;
+  for(const v of vendors)
+    html+=`<button class="vbtn ${state.vendor===v.slug?'active':''}" onclick="pickVendor('${v.slug}')">${vendorName(v)}<span class="cnt">${v.prices}</span></button>`;
+  document.getElementById('vendorBar').innerHTML=html;
+}
+function pickVendor(s){ state.vendor=s; state.offset=0; renderVendorBar(); loadPrices(); }
+
+function renderFilters(){
+  const mods=(overviewData.modalities||[]).map(m=>`<option value="${m}" ${state.modality===m?'selected':''}>${modalityLabel(m)}</option>`).join('');
+  document.getElementById('filters').innerHTML=`
+    <select onchange="sf('modality',this.value)"><option value="">${t('allModality')}</option>${mods}</select>
+    <select onchange="sf('currency',this.value)"><option value="">${t('allCurrency')}</option>
+      <option value="CNY" ${state.currency==='CNY'?'selected':''}>¥ CNY</option>
+      <option value="USD" ${state.currency==='USD'?'selected':''}>$ USD</option></select>
+    <select onchange="sf('billing_unit',this.value)"><option value="">${t('allBilling')}</option>
+      <option value="token" ${state.billing_unit==='token'?'selected':''}>token</option>
+      <option value="request" ${state.billing_unit==='request'?'selected':''}>request</option>
+      <option value="second" ${state.billing_unit==='second'?'selected':''}>second</option>
+      <option value="minute" ${state.billing_unit==='minute'?'selected':''}>minute</option>
+      <option value="per_image" ${state.billing_unit==='per_image'?'selected':''}>per_image</option>
+      <option value="10k_chars" ${state.billing_unit==='10k_chars'?'selected':''}>10k_chars</option></select>
+    <input type="text" placeholder="${t('searchPh')}" value="${state.q}" oninput="sf('q',this.value)">
+    <button class="clear-btn" onclick="clearAll()">${t('clear')}</button>
+    <div class="field-menu-wrap">
+      <button class="clear-btn" onclick="toggleFieldMenu()">☷ ${t('fields')}</button>
+      <div class="field-menu" id="fieldMenu" hidden></div>
+    </div>`;
+}
+const FIELD_DEFS=[
+  ['vendor','thVendor'],['model','thModel'],['modality','thModality'],['context','thCtx'],
+  ['currency','thCurrency'],['billing','thBilling'],['tier','thTier'],['window','thTimeWindow'],
+  ['input','thInput'],['output','thOutput'],['cacheRead','thCacheR'],['cacheWrite','thCacheW'],['source','thSource']
+];
+let visibleFields=JSON.parse(localStorage.getItem('price-visible-fields')||'null')||FIELD_DEFS.map(x=>x[0]);
+function renderFieldMenu(){
+  const menu=document.getElementById('fieldMenu'); if(!menu) return;
+  menu.innerHTML=`<div class="field-menu-title">${t('fieldsHint')}</div>`+FIELD_DEFS.map(([key,label])=>
+    `<label><input type="checkbox" ${visibleFields.includes(key)?'checked':''} onchange="toggleField('${key}',this.checked)"> ${t(label)}</label>`).join('');
+}
+function toggleFieldMenu(){ const menu=document.getElementById('fieldMenu'); menu.hidden=!menu.hidden; if(!menu.hidden) renderFieldMenu(); }
+function toggleField(key,enabled){
+  if(enabled&&!visibleFields.includes(key)) visibleFields.push(key);
+  if(!enabled) visibleFields=visibleFields.filter(x=>x!==key);
+  if(!visibleFields.length) visibleFields=['model'];
+  localStorage.setItem('price-visible-fields',JSON.stringify(visibleFields)); renderFieldMenu(); loadPrices();
+}
+function sf(k,v){ state[k]=v; state.offset=0; loadPrices(); }
+function clearAll(){ state={vendor:'',modality:'',currency:'',billing_unit:'',q:'',sort:'vendor',offset:0}; renderVendorBar(); renderFilters(); loadPrices(); }
+
+async function loadPrices(){
+  const p=new URLSearchParams();
+  for(const k of ['vendor','modality','currency','billing_unit','q']) if(state[k]) p.set(k,state[k]);
+  p.set('sort',state.sort); p.set('limit',PAGE_SIZE); p.set('offset',state.offset);
+  const data=await fetch(`${API}/prices?${p}`).then(r=>r.json());
+  renderTable(data);
+}
+
+/* ── 表格渲染 ── */
+function toggleSort(col){ state.sort=col; state.offset=0; loadPrices(); }
+
+function fmtP(v,cls){
+  if(v===null||v===undefined) return `<td class="num ${cls}">—</td>`;
+  return `<td class="num ${cls}">${v>=1?v.toFixed(2):v.toFixed(4)}</td>`;
+}
+function curTag(c){ return `<span class="tag ${c==='CNY'?'cny':'usd'}">${c}</span>`; }
+function buTag(b){ return `<span class="tag bu">${b}</span>`; }
+function fmtCtx(w){
+  if(!w) return '';
+  if(w>=1e6) return (w/1e6).toFixed(1)+'M';
+  if(w>=1e3) return (w/1e3).toFixed(0)+'K';
+  return w;
+}
+function fmtTW(tw){
+  if(!tw) return '';
+  const lbl=tw.label||'';
+  const wins=(tw.windows||[]).map(w=>`${w.start}-${w.end}`).join(', ');
+  const tz=tw.timezone==='Asia/Shanghai'?'CST':(tw.timezone||'');
+  const cls=lbl==='off-peak'?'tw-off':'tw-peak';
+  const txt=lbl==='off-peak'?t('offpeak'):t('peak');
+  return `<span class="tag ${cls}" title="${tz} ${wins}">${txt}</span><span class="tw-detail">${wins}</span>`;
+}
+
+function cacheStateLabel(state){ return state==='write_5m'?'5 min':state==='write_1h'?'1 hour':state||''; }
+function cachePrice(value,cacheState,cls){
+  if(value===null||value===undefined) return `<td class="num ${cls}">—</td>`;
+  const term=cacheStateLabel(cacheState);
+  const title=term?` title="${term}"`:'';
+  return `<td class="num ${cls}"${title}>${value>=1?value.toFixed(2):value.toFixed(4)}${term?`<small class="cache-term"> · ${term}</small>`:''}</td>`;
+}
+function renderTable(data){
+  document.getElementById('count').textContent = lang==='zh' ? `${t('totalPrefix')} ${data.total} ${t('totalSuffix')}` : `${data.total} ${t('totalSuffix')}`;
+  const defs=FIELD_DEFS.filter(([key])=>visibleFields.includes(key));
+  // colgroup 与当前可见字段使用同一份 defs，避免隐藏字段后表头/数据错位。
+  document.getElementById('priceCols').innerHTML=defs.map(([key])=>`<col class="col-${key}">`).join('');
+  const arrows=c=>`<span class="arrow">${state.sort===c?'▼':'↕'}</span>`;
+  document.getElementById('thead').innerHTML='<tr>'+defs.map(([key,label])=>{
+    const sortable=['vendor','model','input','output'].includes(key); const cls=['input','output','cacheRead','cacheWrite'].includes(key)?'num':'';
+    return `<th class="${cls}">${t(label)}${sortable?`<button class="sort-head" onclick="toggleSort('${key==='input'?'input':key==='output'?'output':key}')">${arrows(key)}</button>`:''}</th>`;
+  }).join('')+'</tr>';
+  if(!data.items.length){ document.getElementById('tbody').innerHTML=`<tr><td colspan="${defs.length}" class="empty">${t('empty')}</td></tr>`; renderPager(0); return; }
+  let lastVendor='';
+  document.getElementById('tbody').innerHTML=data.items.map(r=>{
+    const sep=(r.vendor!==lastVendor&&lastVendor!=='')?' class="vendor-sep"':''; lastVendor=r.vendor;
+    const vn=lang==='zh'?(r.vendor_zh||r.vendor_name):r.vendor_name;
+    const src=r.source_url?`<a class="src-link" href="${r.source_url}" target="_blank">${r.source} ↗</a>`:`<span class="src-link">${r.source}</span>`;
+    const cells={vendor:`<td class="vendor-cell" title="${r.vendor_name}">${vn}<span class="en">${r.vendor}</span></td>`,model:`<td class="model-cell" title="${r.model}">${r.model}</td>`,modality:`<td>${modalityLabel(r.modality)}</td>`,context:`<td class="ctx">${fmtCtx(r.context_window)}${r.max_output?' / '+fmtCtx(r.max_output):''}</td>`,currency:`<td>${curTag(r.currency)}</td>`,billing:`<td>${buTag(r.billing_unit)}</td>`,tier:`<td>${r.service_tier&&r.service_tier!=='standard'?`<span class="tag tier">${r.service_tier}</span>`:''}</td>`,window:`<td>${fmtTW(r.time_window)}</td>`,input:fmtP(r.input_price,'p-in'),output:fmtP(r.output_price,'p-out'),cacheRead:cachePrice(r.cached_read,r.cache_state,'p-cache'),cacheWrite:cachePrice(r.cached_write,r.cache_state,'p-cache'),source:`<td>${src}</td>`};
+    return `<tr${sep}>${defs.map(([key])=>cells[key]).join('')}</tr>`;
+  }).join('');
+  renderPager(data.total);
+}
+
+function renderPager(total){
+  const pages=Math.ceil(total/PAGE_SIZE), cur=Math.floor(state.offset/PAGE_SIZE);
+  const html=pages<=1?'':`
+    <button ${cur===0?'disabled':''} onclick="gotoPage(${cur-1})">${t('prev')}</button>
+    <span>${cur+1} / ${pages}</span>
+    <button ${cur>=pages-1?'disabled':''} onclick="gotoPage(${cur+1})">${t('next')}</button>`;
+  document.getElementById('pager').innerHTML=html;
+  document.getElementById('pager2').innerHTML=html;
+}
+function gotoPage(p){ state.offset=p*PAGE_SIZE; loadPrices(); window.scrollTo({top:180,behavior:'smooth'}); }
+
+init();
+</script>
+</body>
+</html>

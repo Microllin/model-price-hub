@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>后台管理 · 官方模型定价中心</title>
+<script>
+(function(){try{var t=localStorage.getItem('theme');if(t==='light'){document.documentElement.classList.remove('dark')}else{document.documentElement.classList.add('dark')}}catch(e){}})();
+</script>
+<style>
+:root {
+  --brand-300:#39A9F5; --brand-400:#1688E8; --brand-500:#0B5ED7;
+  --success:#3AD186; --danger:#F24F4F; --warning:#FF733C; --notice:#F7C530;
+  --radius:10px;
+  --font:Inter,Roboto,'Noto Sans SC',system-ui,sans-serif;
+  --mono:'JetBrains Mono',Consolas,monospace;
+}
+html:not(.dark) {
+  color-scheme:light;
+  --bg:#F3F6FA; --card:#FFFFFF; --card2:#F8FAFD; --thead:#F0F4F9;
+  --border:#E2E8F2; --border2:#D0D9E6;
+  --text:#172033; --muted:#667085; --faint:#98A2B3;
+  --accent:#0B5ED7; --accent-soft:rgba(11,94,215,.08); --hover:rgba(11,94,215,.04);
+  --shadow:0 1px 3px rgba(6,21,47,.06);
+}
+html.dark {
+  color-scheme:dark;
+  --bg:#0b1220; --card:#111c2e; --card2:#17243a; --thead:#1a2c47;
+  --border:#263851; --border2:#38506e;
+  --text:#e8eef7; --muted:#9aabc2; --faint:#667995;
+  --accent:#62b5f5; --accent-soft:rgba(98,181,245,.13); --hover:rgba(98,181,245,.07);
+  --shadow:0 8px 24px rgba(0,0,0,.16);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--font); background:var(--bg); color:var(--text); min-height:100vh; transition:background .25s,color .25s; }
+button { font-family:var(--font); }
+
+/* ── 登录 ── */
+.login-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  background:radial-gradient(900px 500px at 80% -10%, rgba(57,169,245,.12), transparent 60%), var(--bg); }
+.login-card { width:380px; max-width:100%; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:36px 32px; box-shadow:var(--shadow); }
+.login-card h1 { font-size:19px; margin-bottom:4px; }
+.login-card .sub { color:var(--muted); font-size:12px; margin-bottom:22px; }
+.ctrl { width:100%; height:38px; padding:0 12px; border-radius:8px; border:1px solid var(--border2); background:var(--card2); color:var(--text); font-size:13px; outline:none; margin-bottom:12px; font-family:var(--font); }
+.ctrl:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+textarea.ctrl { height:auto; padding:8px 12px; resize:vertical; }
+.login-err { color:var(--danger); font-size:12px; min-height:18px; margin-top:6px; }
+
+/* ── 布局 ── */
+.layout { display:flex; min-height:100vh; background:var(--bg); }
+.sidebar { width:232px; flex-shrink:0; background:#0d1a2b; color:#dce8f7; border-right:1px solid #223650; padding:22px 14px; position:sticky; top:0; height:100vh; overflow-y:auto; }
+.side-logo { display:flex; align-items:center; gap:9px; padding:4px 10px 16px; border-bottom:1px solid var(--border); margin-bottom:14px; }
+.side-logo .logo { width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#1688E8,#39A9F5);display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:#fff; }
+.side-logo b { font-size:14px; }
+.side-logo span { display:block; font-size:10px; color:#8196b2; font-weight:400; }
+.menu-item { display:flex; align-items:center; gap:9px; padding:9px 12px; border-radius:8px; color:var(--muted); font-size:13px; cursor:pointer; margin-bottom:2px; border:1px solid transparent; }
+.menu-item:hover { color:#fff; background:rgba(255,255,255,.07); }
+.menu-item.active { color:#fff; background:#1c4f78; border-color:#4fa7df; font-weight:600; }
+.menu-item .ico { width:16px; text-align:center; }
+.side-foot { margin-top:20px; padding:10px; border-top:1px solid var(--border); }
+.side-foot button { width:100%; margin-bottom:6px; }
+
+.main { flex:1; min-width:0; padding:30px clamp(18px,4vw,48px) 60px; }
+.main-hdr { display:flex; align-items:center; gap:12px; margin-bottom:22px; flex-wrap:wrap; }
+.main-hdr h2 { font-size:21px; letter-spacing:.1px; }
+.workspace-note { font-size:12px; color:var(--muted); }
+.overview-grid { display:grid; grid-template-columns:repeat(4,minmax(130px,1fr)); gap:12px; margin-bottom:16px; }
+.overview-card { padding:15px 16px; background:var(--card); border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow); }
+.overview-card .label { color:var(--muted); font-size:11px; }
+.overview-card .value { margin-top:8px; font-size:23px; font-weight:700; font-family:var(--mono); color:var(--accent); }
+@media (max-width:900px){ .overview-grid{grid-template-columns:repeat(2,minmax(120px,1fr));} }
+.main-hdr h2 { font-size:18px; }
+.main-hdr .desc { color:var(--muted); font-size:12px; }
+.main-hdr .spacer { flex:1; }
+
+/* ── 按钮 ── */
+.btn { display:inline-flex; align-items:center; gap:5px; padding:7px 14px; border-radius:8px; font-size:12.5px; cursor:pointer; border:1px solid var(--border2); background:var(--card2); color:var(--text); transition:all .15s; }
+.btn:hover { border-color:var(--accent); }
+.btn.primary { background:var(--brand-500); border-color:var(--brand-500); color:#fff; font-weight:600; }
+html.dark .btn.primary { background:var(--brand-400); border-color:var(--brand-400); }
+.btn.primary:hover { filter:brightness(1.1); }
+.btn.danger { color:var(--danger); border-color:var(--danger); background:transparent; }
+.btn.success { color:var(--success); border-color:var(--success); background:transparent; }
+.btn.sm { padding:4px 10px; font-size:11.5px; }
+.btn:disabled { opacity:.4; cursor:not-allowed; }
+.btn .spin { display:inline-block; animation:spin 1s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── 卡片 ── */
+.card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:18px; margin-bottom:14px; box-shadow:var(--shadow); }
+.card h3 { font-size:14px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.card h3 .sub { font-size:11px; color:var(--faint); font-weight:400; }
+
+/* ── 状态点 ── */
+.dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+.dot.ok { background:var(--success); box-shadow:0 0 6px var(--success); }
+.dot.error { background:var(--danger); box-shadow:0 0 6px var(--danger); }
+.dot.warning { background:var(--warning); }
+.dot.unavailable { background:var(--faint); box-shadow:0 0 0 3px color-mix(in srgb,var(--faint) 16%,transparent); }
+.dot.running { background:var(--notice); animation:pulse 1s infinite; }
+.dot.never { background:var(--faint); }
+@keyframes pulse { 50% { opacity:.4; } }
+
+/* ── 脚本表格 ── */
+table { width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; }
+col.sc-status { width:86px; } col.sc-name { width:200px; } col.sc-url { width:auto; }
+col.sc-chain { width:150px; } col.sc-last { width:150px; } col.sc-items { width:78px; }
+col.sc-act { width:310px; }
+th { background:var(--thead); color:var(--muted); text-align:left; padding:9px 12px; font-size:11px; font-weight:600; letter-spacing:.4px; border-bottom:2px solid var(--border2); white-space:nowrap; }
+td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+tr:hover td { background:var(--hover); }
+.sc-name b { display:block; font-size:13px; }
+.sc-name span { font-size:11px; color:var(--faint); font-family:var(--mono); }
+.url-link { color:var(--muted); font-size:11.5px; text-decoration:none; font-family:var(--mono); }
+.url-link:hover { color:var(--accent); }
+.chain-tag { display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; background:var(--accent-soft); color:var(--accent); margin-right:3px; font-family:var(--mono); }
+.err-text { color:var(--danger); font-size:11px; display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+.ts { font-size:11px; color:var(--muted); font-family:var(--mono); }
+.items-n { font-family:var(--mono); font-weight:600; color:var(--accent); }
+
+/* ── 管线状态条 ── */
+.pipe-bar { display:flex; gap:14px; flex-wrap:wrap; align-items:center; padding:12px 16px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:14px; font-size:12px; }
+.pipe-bar .lbl { color:var(--muted); }
+.pipe-bar .val { font-family:var(--mono); font-weight:600; }
+
+/* ── Key 卡片 ── */
+.key-item { display:flex; align-items:center; gap:14px; padding:14px 16px; border:1px solid var(--border); border-radius:var(--radius); background:var(--card2); margin-bottom:10px; flex-wrap:wrap; }
+.key-item .info { flex:1; min-width:200px; }
+.key-item .info b { font-size:14px; }
+.key-item .info .meta { font-size:11.5px; color:var(--muted); font-family:var(--mono); margin-top:3px; }
+.purpose-tag { display:inline-block; padding:1px 8px; border-radius:99px; font-size:10.5px; background:var(--accent-soft); color:var(--accent); margin-right:4px; }
+
+/* ── 弹窗 ── */
+.modal-mask { position:fixed; inset:0; background:rgba(3,12,29,.6); backdrop-filter:blur(3px); z-index:100; display:flex; align-items:center; justify-content:center; padding:24px; }
+.modal { background:var(--card); border:1px solid var(--border2); border-radius:14px; padding:24px; width:560px; max-width:100%; max-height:86vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.4); }
+.modal h3 { font-size:15px; margin-bottom:16px; }
+.modal .field { margin-bottom:12px; }
+.modal .field label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
+.modal .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
+.modal pre { background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:12px; font-size:11.5px; font-family:var(--mono); white-space:pre-wrap; word-break:break-all; max-height:300px; overflow-y:auto; color:var(--muted); }
+.checks { display:flex; gap:14px; flex-wrap:wrap; }
+.checks label { display:flex; align-items:center; gap:6px; font-size:12.5px; cursor:pointer; }
+.checks input { accent-color:var(--accent); }
+
+/* ── Toast ── */
+.toast { position:fixed; left:50%; bottom:30px; transform:translateX(-50%); background:var(--card2); border:1px solid var(--border2); border-radius:10px; padding:11px 20px; font-size:13px; box-shadow:0 8px 30px rgba(0,0,0,.3); opacity:0; transition:opacity .25s; pointer-events:none; z-index:200; max-width:80vw; }
+.toast.show { opacity:1; }
+.toast.err { border-color:var(--danger); color:var(--danger); }
+.toast.ok { border-color:var(--success); color:var(--success); }
+
+.pane { display:none; } .pane.active { display:block; }
+.hb { display:flex; gap:8px; }
+@media (max-width:900px){ .sidebar{width:64px;} .side-logo b,.side-logo span,.menu-item .txt{display:none;} }
+</style>
+</head>
+<body>
+
+<!-- 登录 -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm">
+    <h1>官方模型定价中心 · 后台</h1>
+    <div class="sub">脚本爬取管理 · API Key 配置 · AI 修复</div>
+    <input class="ctrl" id="loginUser" placeholder="管理员账号" autocomplete="username" required>
+    <input class="ctrl" id="loginPassword" type="password" placeholder="管理员密码" autocomplete="current-password" required>
+    <button class="btn primary" type="submit" style="width:100%;height:38px;justify-content:center">登 录</button>
+    <div class="login-err" id="loginErr"></div>
+    <div style="margin-top:14px;font-size:12px;color:var(--faint)"><a href="/" style="color:var(--accent);text-decoration:none">← 返回前台</a></div>
+  </form>
+</div>
+
+<!-- 后台 -->
+<div class="layout" id="adminView" style="display:none">
+  <aside class="sidebar">
+    <div class="side-logo">
+      <span class="logo">¥</span>
+      <div><b>定价中心后台</b><span>Price Hub Admin</span></div>
+    </div>
+    <div class="menu-item active" data-pane="scrapers" onclick="switchPane('scrapers')">
+      <span class="ico">🕷️</span><span class="txt">脚本爬取</span>
+    </div>
+    <div class="menu-item" data-pane="keys" onclick="switchPane('keys')">
+      <span class="ico">🔑</span><span class="txt">API Key</span>
+    </div>
+    <div class="side-foot">
+      <button class="btn sm" id="themeBtn" onclick="toggleTheme()" style="width:100%">☀️ 切换主题</button>
+      <button class="btn sm" onclick="location.href='/'" style="width:100%">🏠 前台首页</button>
+      <button class="btn sm danger" onclick="logout()" style="width:100%">退出登录</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- ═══════ 菜单1:脚本爬取 ═══════ -->
+    <div class="pane active" id="pane-scrapers">
+      <div class="main-hdr">
+        <h2>🕷️ 脚本爬取</h2>
+        <span class="desc">官方定价页采集脚本 · 状态监控 · AI 修复</span>
+        <div class="spacer"></div>
+        <button class="btn" onclick="loadScrapers()">🔄 刷新状态</button>
+        <button class="btn primary" id="runAllBtn" onclick="runAll()">⚡ 全局更新</button>
+      </div>
+      <div class="overview-grid" id="scraperOverview"></div>
+      <div class="pipe-bar" id="pipeBar"></div>
+      <div class="card" style="padding:0;overflow-x:auto">
+        <table>
+          <colgroup><col class="sc-status"><col class="sc-name"><col class="sc-url"><col class="sc-chain"><col class="sc-last"><col class="sc-items"><col class="sc-items"><col class="sc-act"></colgroup>
+          <thead><tr>
+            <th>本次探测</th><th>脚本 / 厂商</th><th>官方页面</th><th>降级链</th><th>最近探测</th><th>已入库</th><th>本次</th><th>操作</th>
+          </tr></thead>
+          <tbody id="scraperBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════ 菜单2:API Key ═══════ -->
+    <div class="pane" id="pane-keys">
+      <div class="main-hdr">
+        <h2>🔑 API Key 管理</h2>
+        <span class="desc">LLM Key 用于:脚本 AI 修复 · Playwright 页面监控 · 视觉 OCR 兜底</span>
+        <div class="spacer"></div>
+        <button class="btn primary" onclick="openKeyModal()">＋ 录入 Key</button>
+      </div>
+      <div id="keyList"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Key 弹窗 -->
+<div class="modal-mask" id="keyModal" style="display:none" onclick="if(event.target===this)closeKeyModal()">
+  <div class="modal">
+    <h3 id="keyModalTitle">录入 LLM API Key</h3>
+    <div class="field"><label>名称(如:DeepSeek 官方 / OpenAI 备用)</label><input class="ctrl" id="kName" placeholder="DeepSeek 官方"></div>
+    <div class="field"><label>Base URL(OpenAI 兼容接口)</label><input class="ctrl" id="kBase" placeholder="https://api.deepseek.com/v1"></div>
+    <div class="field"><label>API Key</label><input class="ctrl" id="kKey" placeholder="sk-..."></div>
+    <div class="field"><label>模型</label><input class="ctrl" id="kModel" placeholder="deepseek-chat"></div>
+    <div class="field"><label>用途(勾选)</label>
+      <div class="checks">
+        <label><input type="checkbox" id="kPRepair" checked> AI 修复脚本</label>
+        <label><input type="checkbox" id="kPOcr"> 视觉 OCR</label>
+        <label><input type="checkbox" id="kPMonitor"> Playwright 监控</label>
+      </div>
+    </div>
+    <div class="field"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="kEnabled" checked style="accent-color:var(--accent)"> 启用</label></div>
+    <div class="actions">
+      <button class="btn" onclick="closeKeyModal()">取消</button>
+      <button class="btn primary" onclick="saveKey()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 厂商信息弹窗 -->
+<div class="modal-mask" id="vendorModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal">
+    <h3>维护厂商信息</h3>
+    <div class="field"><label>厂商标识</label><input class="ctrl" id="vSlug" disabled></div>
+    <div class="field"><label>中文名称</label><input class="ctrl" id="vZh" placeholder="如:深度求索"></div>
+    <div class="field"><label>官方域名</label><input class="ctrl" id="vDomain" placeholder="如:api-docs.deepseek.com"></div>
+    <div class="actions">
+      <button class="btn" onclick="document.getElementById('vendorModal').style.display='none'">取消</button>
+      <button class="btn primary" onclick="saveVendor()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 详情/修复弹窗 -->
+<div class="modal-mask" id="detailModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="width:720px">
+    <h3 id="detailTitle">脚本详情</h3>
+    <div id="detailBody"></div>
+    <div class="actions">
+      <button class="btn" onclick="document.getElementById('detailModal').style.display='none'">关闭</button>
+      <button class="btn success" id="applyFixBtn" style="display:none" onclick="applyFix()">✅ 应用 AI 修复代码</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+function toast(msg, cls=''){ const el=$('toast'); el.textContent=msg; el.className='toast show '+cls; setTimeout(()=>el.className='toast',3200); }
+function toggleTheme(){ const d=document.documentElement.classList.toggle('dark'); localStorage.setItem('theme',d?'dark':'light'); $('themeBtn').textContent=d?'☀️ 切换主题':'🌙 切换主题'; }
+$('themeBtn').textContent = document.documentElement.classList.contains('dark')?'☀️ 切换主题':'🌙 切换主题';
+
+async function api(path, opts={}){
+  const r = await fetch('/api'+path, {headers:{'Content-Type':'application/json'}, ...opts});
+  if (r.status===401){ showLogin(); throw new Error('未登录'); }
+  const data = await r.json().catch(()=>({}));
+  if (!r.ok) throw new Error(data.detail||r.statusText);
+  return data;
+}
+
+/* ── 登录 ── */
+function showLogin(){ $('loginView').style.display='flex'; $('adminView').style.display='none'; }
+function showAdmin(){ $('loginView').style.display='none'; $('adminView').style.display='flex'; loadScrapers(); loadKeys(); }
+$('loginForm').onsubmit = async e=>{
+  e.preventDefault();
+  try{
+    await api('/admin/login',{method:'POST',body:JSON.stringify({username:$('loginUser').value,password:$('loginPassword').value})});
+    showAdmin();
+  }catch(err){ $('loginErr').textContent=err.message; }
+};
+async function logout(){ await api('/admin/logout',{method:'POST'}).catch(()=>{}); showLogin(); }
+
+/* ── 菜单切换 ── */
+function switchPane(p){
+  document.querySelectorAll('.menu-item').forEach(m=>m.classList.toggle('active',m.dataset.pane===p));
+  document.querySelectorAll('.pane').forEach(el=>el.classList.toggle('active',el.id==='pane-'+p));
+}
+
+/* ═══════ 菜单1:脚本爬取 ═══════ */
+let scrapers=[];
+const STATUS_TXT={never:'未探测',ok:'验证通过',warning:'待复核',unavailable:'环境未启用',error:'执行异常',running:'探测中'};
+const STATUS_DOT={never:'never',ok:'ok',warning:'warning',unavailable:'unavailable',error:'error',running:'running'};
+
+async function loadScrapers(){
+  try{
+    const data=await api('/admin/scrapers');
+    scrapers=data.items;
+    renderOverview();
+    renderPipe(data.pipeline);
+    renderScrapers();
+  }catch(e){ toast(e.message,'err'); }
+}
+
+function renderOverview(){
+  const total=scrapers.length, ok=scrapers.filter(s=>s.status==='ok').length, errors=scrapers.filter(s=>s.status==='error').length;
+  const rows=scrapers.reduce((sum,s)=>sum+(s.data_rows||0),0);
+  $('scraperOverview').innerHTML=`<div class="overview-card"><div class="label">脚本总数</div><div class="value">${total}</div></div><div class="overview-card"><div class="label">最近验证通过</div><div class="value" style="color:var(--success)">${ok}</div></div><div class="overview-card"><div class="label">需要处理</div><div class="value" style="color:${errors?'var(--danger)':'var(--success)'}">${errors}</div></div><div class="overview-card"><div class="label">已入库价格</div><div class="value">${rows.toLocaleString()}</div></div>`;
+}
+function renderPipe(p){
+  const st=p.status||'unknown';
+  const cls=st==='ok'?'var(--success)':st==='failed'?'var(--danger)':st==='running'?'var(--notice)':'var(--faint)';
+  $('pipeBar').innerHTML=`
+    <span><span class="lbl">管线状态:</span> <span class="val" style="color:${cls}">${st}</span></span>
+    <span><span class="lbl">最近更新:</span> <span class="val">${fmtTime(p.updated_at)}</span></span>
+    ${p.started_at?`<span><span class="lbl">开始:</span> <span class="val">${fmtTime(p.started_at)}</span></span>`:''}
+    ${p.error?`<span style="color:var(--danger)">⚠ ${esc(p.error).slice(0,120)}</span>`:''}`;
+}
+
+function renderScrapers(){
+  if(!scrapers.length){ $('scraperBody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">无数据</td></tr>'; return; }
+  $('scraperBody').innerHTML=scrapers.map(s=>{
+    const chain=(s.fetch_chain||[]).map(c=>`<span class="chain-tag">${c}</span>`).join('');
+    const note=s.error||s.message||'';
+    const err=note?`<span class="err-text" style="color:${s.status==='error'?'var(--danger)':'var(--muted)'}" title="${esc(note)}">${s.status==='error'?'⚠':'ℹ'} ${esc(note).slice(0,64)}</span>`:'';
+    const repairBadge=s.repair?repairTag(s.repair):'';
+    return `<tr>
+      <td><span class="dot ${STATUS_DOT[s.status]||'never'}"></span>${STATUS_TXT[s.status]||s.status}</td>
+      <td class="sc-name"><b>${esc(s.vendor_zh||s.provider)}</b><span>${esc(s.name)} · ${esc(s.class)}</span>${err}</td>
+      <td><a class="url-link" href="${esc(s.source_url)}" target="_blank" title="${esc(s.source_url)}">${esc(s.domain||s.source_url)}</a></td>
+      <td>${chain}${s.requires_render?'<span class="chain-tag" style="background:rgba(247,197,48,.12);color:var(--notice)">browser</span>':''}</td>
+      <td class="ts">${fmtTime(s.last_run)}${s.duration_ms?`<br>${s.duration_ms}ms`:''}</td>
+      <td class="items-n" title="最近入库:${fmtTime(s.data_last_scraped)}">${s.data_rows??0}</td>
+      <td class="items-n">${s.items??'—'}</td>
+      <td><div class="hb">
+        <button class="btn sm" onclick="runOne('${s.name}',this)">▶ 运行</button>
+        <button class="btn sm" onclick="openVendor('${s.provider}')">✏️</button>
+        <button class="btn sm" onclick="openDetail('${s.name}')">📋</button>
+        <button class="btn sm danger" ${s.status!=='error'?'disabled title="仅确认执行异常后可修复"':''} onclick="aiRepair('${s.name}',this)">🤖 AI脚本修复</button>
+      </div>${repairBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+function repairTag(r){
+  const m={diagnosing:['诊断中…','var(--notice)'],suggested:['已有修复建议','var(--success)'],applied:['已应用','var(--success)'],failed:['修复失败','var(--danger)']};
+  const [txt,color]=m[r.status]||[r.status,'var(--muted)'];
+  return `<div style="font-size:10.5px;color:${color};margin-top:3px">🤖 ${txt}${r.summary?' · '+esc(r.summary).slice(0,40):''}</div>`;
+}
+
+async function runOne(name,btn){
+  btn.disabled=true; btn.innerHTML='<span class="spin">⏳</span> 运行中';
+  try{
+    const r=await api(`/admin/scrapers/${name}/run`,{method:'POST'});
+    toast(r.ok?`✅ ${name}: ${r.items} 条,${r.duration_ms}ms`:`❌ ${name}: ${r.error||'失败'}`, r.ok?'ok':'err');
+  }catch(e){ toast(e.message,'err'); }
+  finally{ btn.disabled=false; btn.innerHTML='▶ 运行'; loadScrapers(); }
+}
+
+let runAllTimer=null;
+async function runAll(){
+  if(!confirm('全局更新将串行运行全部官方脚本(可能耗时数分钟),继续?')) return;
+  const btn=$('runAllBtn');
+  try{
+    const r=await api('/admin/scrapers/run-all',{method:'POST'});
+    if(!r.ok){ toast(r.error||'启动失败','err'); return; }
+    toast('⚡ 全局更新已启动,后台运行中…','ok');
+    btn.disabled=true;
+    pollRunAll();
+  }catch(e){ toast(e.message,'err'); }
+}
+function pollRunAll(){
+  if(runAllTimer) clearInterval(runAllTimer);
+  runAllTimer=setInterval(async()=>{
+    try{
+      const s=await api('/admin/scrapers/run-all-status');
+      const btn=$('runAllBtn');
+      if(s.running){
+        btn.innerHTML=`<span class="spin">⏳</span> ${s.done}/${s.total} (成功 ${s.success})`;
+        loadScrapers();
+      }else{
+        clearInterval(runAllTimer); runAllTimer=null;
+        btn.disabled=false; btn.innerHTML='⚡ 全局更新';
+        toast(`全局更新完成:${s.success}/${s.total} 成功`, s.success<s.total?'err':'ok');
+        loadScrapers();
+      }
+    }catch(e){ clearInterval(runAllTimer); runAllTimer=null; $('runAllBtn').disabled=false; $('runAllBtn').innerHTML='⚡ 全局更新'; }
+  },3000);
+}
+
+async function aiRepair(name,btn){
+  if(!confirm(`调用 LLM 诊断「${name}」的失败原因并生成修复建议?`)) return;
+  btn.disabled=true; btn.innerHTML='<span class="spin">⏳</span> 诊断中';
+  try{
+    const r=await api(`/admin/scrapers/${name}/ai-repair`,{method:'POST'});
+    toast('🤖 诊断完成:'+(r.repair.summary||''),'ok');
+    // 结果写回当前行状态，不通过二级弹窗承载 AI 修复流程。
+  }catch(e){ toast(e.message,'err'); }
+  finally{ btn.disabled=false; btn.innerHTML='🤖 AI脚本修复'; loadScrapers(); }
+}
+
+let detailName='';
+async function openDetail(name){
+  detailName=name;
+  try{
+    const d=await api(`/admin/scrapers/${name}/detail`);
+    const st=d.status||{}, rep=d.repair||{};
+    let html=`<div style="margin-bottom:10px;font-size:12px;color:var(--muted)">脚本文件:<span style="font-family:var(--mono)">${esc(d.source_file||'未知')}</span></div>`;
+    if(st.error) html+=`<h4 style="color:var(--danger);font-size:13px;margin:10px 0 6px">错误信息</h4><pre>${esc(st.error)}\n${esc(st.traceback||'')}</pre>`;
+    if(rep.detail){
+      const dt=rep.detail;
+      html+=`<h4 style="color:var(--success);font-size:13px;margin:14px 0 6px">🤖 AI 诊断(置信度 ${dt.confidence??'?'})</h4>
+        <pre>根因:${esc(dt.diagnosis||'')}\n页面是否变更:${dt.page_changed?'是':'否'}\n\n修复建议:\n${esc(dt.fix_suggestion||'')}</pre>`;
+      if(dt.fixed_code){ html+=`<h4 style="font-size:13px;margin:10px 0 6px">修复后代码(点击「应用」写回,自动备份原文件)</h4><pre>${esc(dt.fixed_code.slice(0,3000))}${dt.fixed_code.length>3000?'\n…(截断)':''}</pre>`; $('applyFixBtn').style.display=''; }
+      else $('applyFixBtn').style.display='none';
+    } else $('applyFixBtn').style.display='none';
+    if(!st.error&&!rep.detail) html+='<div style="color:var(--muted);padding:20px;text-align:center">脚本运行正常,无错误记录</div>';
+    $('detailTitle').textContent=`脚本详情 · ${name}`;
+    $('detailBody').innerHTML=html;
+    $('detailModal').style.display='flex';
+  }catch(e){ toast(e.message,'err'); }
+}
+
+async function applyFix(){
+  if(!confirm(`将 AI 修复代码写回「${detailName}」的脚本文件?\n原文件会自动备份。`)) return;
+  try{
+    const r=await api(`/admin/scrapers/${detailName}/apply-fix`,{method:'POST'});
+    toast('✅ 已应用,备份:'+r.backup,'ok');
+    $('detailModal').style.display='none'; loadScrapers();
+  }catch(e){ toast(e.message,'err'); }
+}
+
+/* ── 厂商信息 ── */
+function openVendor(slug){
+  const s=scrapers.find(x=>x.provider===slug)||{};
+  $('vSlug').value=slug; $('vZh').value=s.vendor_zh||''; $('vDomain').value=s.domain||'';
+  $('vendorModal').style.display='flex';
+}
+async function saveVendor(){
+  try{
+    await api(`/admin/vendors/${$('vSlug').value}`,{method:'PUT',body:JSON.stringify({zh:$('vZh').value,domain:$('vDomain').value})});
+    toast('已保存','ok'); $('vendorModal').style.display='none'; loadScrapers();
+  }catch(e){ toast(e.message,'err'); }
+}
+
+/* ═══════ 菜单2:API Key ═══════ */
+let keys=[], editingKey=null;
+const PURPOSE_TXT={repair:'AI修复',ocr:'视觉OCR',monitor:'监控'};
+
+async function loadKeys(){
+  try{
+    keys=await api('/admin/llm-keys');
+    renderKeys();
+  }catch(e){ toast(e.message,'err'); }
+}
+
+function renderKeys(){
+  if(!keys.length){
+    $('keyList').innerHTML='<div class="card" style="text-align:center;color:var(--muted);padding:40px">尚未录入 Key<br><span style="font-size:12px">录入后可用于:脚本报错时一键 AI 修复、Playwright 页面监控、视觉 OCR 兜底</span></div>';
+    return;
+  }
+  $('keyList').innerHTML=keys.map(k=>`
+    <div class="key-item">
+      <div class="info">
+        <b>${esc(k.name)}</b> ${k.enabled?'':'<span style="color:var(--danger);font-size:11px">(已停用)</span>'}
+        <div class="meta">${esc(k.base_url)} · ${esc(k.model)} · ${esc(k.api_key)}</div>
+        <div style="margin-top:5px">${(k.purposes||[]).map(p=>`<span class="purpose-tag">${PURPOSE_TXT[p]||p}</span>`).join('')}</div>
+      </div>
+      <div class="hb">
+        <button class="btn sm" onclick="testKey('${k.id}',this)">🔌 测试</button>
+        <button class="btn sm" onclick="editKey('${k.id}')">✏️ 编辑</button>
+        <button class="btn sm danger" onclick="delKey('${k.id}')">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function openKeyModal(){
+  editingKey=null;
+  $('keyModalTitle').textContent='录入 LLM API Key';
+  $('kName').value=''; $('kBase').value=''; $('kKey').value=''; $('kModel').value='';
+  $('kPRepair').checked=true; $('kPOcr').checked=false; $('kPMonitor').checked=false; $('kEnabled').checked=true;
+  $('keyModal').style.display='flex';
+}
+function editKey(id){
+  const k=keys.find(x=>x.id===id); if(!k) return;
+  editingKey=k;
+  $('keyModalTitle').textContent='编辑 Key';
+  $('kName').value=k.name; $('kBase').value=k.base_url; $('kKey').value=k.api_key; $('kModel').value=k.model;
+  $('kPRepair').checked=(k.purposes||[]).includes('repair');
+  $('kPOcr').checked=(k.purposes||[]).includes('ocr');
+  $('kPMonitor').checked=(k.purposes||[]).includes('monitor');
+  $('kEnabled').checked=k.enabled!==false;
+  $('keyModal').style.display='flex';
+}
+function closeKeyModal(){ $('keyModal').style.display='none'; }
+
+async function saveKey(){
+  const purposes=[];
+  if($('kPRepair').checked) purposes.push('repair');
+  if($('kPOcr').checked) purposes.push('ocr');
+  if($('kPMonitor').checked) purposes.push('monitor');
+  const body={name:$('kName').value.trim(),base_url:$('kBase').value.trim()||'https://api.openai.com/v1',
+    api_key:$('kKey').value.trim(),model:$('kModel').value.trim()||'gpt-4o-mini',purposes,enabled:$('kEnabled').checked};
+  if(!body.name||!body.api_key){ toast('名称和 Key 必填','err'); return; }
+  try{
+    if(editingKey) await api(`/admin/llm-keys/${editingKey.id}`,{method:'PUT',body:JSON.stringify(body)});
+    else await api('/admin/llm-keys',{method:'POST',body:JSON.stringify(body)});
+    toast('已保存','ok'); closeKeyModal(); loadKeys();
+  }catch(e){ toast(e.message,'err'); }
+}
+
+async function delKey(id){
+  if(!confirm('确认删除该 Key?')) return;
+  try{ await api(`/admin/llm-keys/${id}`,{method:'DELETE'}); toast('已删除','ok'); loadKeys(); }
+  catch(e){ toast(e.message,'err'); }
+}
+
+async function testKey(id,btn){
+  btn.disabled=true; btn.innerHTML='<span class="spin">⏳</span>';
+  try{
+    const r=await api(`/admin/llm-keys/${id}/test`,{method:'POST'});
+    toast(r.ok?`✅ 连通正常:${r.reply||''}`:`❌ ${r.error}`, r.ok?'ok':'err');
+  }catch(e){ toast(e.message,'err'); }
+  finally{ btn.disabled=false; btn.innerHTML='🔌 测试'; }
+}
+
+/* ── 工具 ── */
+function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtTime(iso){
+  if(!iso) return '—';
+  try{ const d=new Date(iso); return d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return iso; }
+}
+
+/* ── 启动:检查登录态 ── */
+(async()=>{ try{ await api('/admin/me'); showAdmin(); }catch(e){ showLogin(); } })();
+</script>
+</body>
+</html>

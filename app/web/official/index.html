@@ -99,19 +99,12 @@ html:not(.dark) .hdr { background:linear-gradient(135deg,#06152F 0%,#082B66 60%,
 
 /* ═══════════ 表格(修复对齐:fixed layout + 列宽定义) ═══════════ */
 .tbl-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); background:var(--card); box-shadow:var(--shadow); }
-table { width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; min-width:1570px; }
+table { width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; }
 /* 列宽统一在此定义,thead/tbody 严格对齐 */
-col.col-vendor { width:150px; }
-col.col-model { width:210px; }
-col.col-modality { width:86px; }
-col.col-context { width:100px; }
-col.col-currency { width:64px; }
-col.col-billing { width:82px; }
-col.col-tier { width:92px; }
-col.col-window { width:170px; }
-col.col-input, col.col-output, col.col-cacheRead, col.col-cacheWrite { width:96px; }
-col.col-source { width:110px; }
-col.col-updated { width:120px; }
+/* 列宽不再写死在 CSS 里。唯一来源是 JS 的 COL_SPEC，renderTable 按当前可见列
+   算成百分比写进 <col>，并把各列最小宽之和设为表格 min-width。
+   这样:宽屏恰好铺满不留空、窄屏才横滚、隐藏列后自动重新分配、
+   新增字段只需往 COL_SPEC 加一行(漏加也有兜底默认值，不会再撑破布局)。 */
 thead th {
   background:var(--thead); color:var(--muted); text-align:left;
   padding:10px 12px; font-weight:600; font-size:11px; letter-spacing:.4px;
@@ -320,6 +313,18 @@ function renderFilters(){
       <div class="field-menu" id="fieldMenu" hidden></div>
     </div>`;
 }
+// 列宽规格:w 是分配权重(宽屏按此比例铺满)，min 是可读下限(决定何时开始横滚)。
+// 加字段时只改这里;没登记的列走 COL_FALLBACK，不会撑破布局。
+const COL_SPEC={
+  vendor:{w:150,min:108}, model:{w:210,min:144}, updated:{w:120,min:96},
+  modality:{w:86,min:78}, context:{w:100,min:78}, currency:{w:64,min:56},
+  billing:{w:82,min:82}, tier:{w:92,min:72}, window:{w:170,min:96},
+  input:{w:96,min:76}, output:{w:96,min:76},
+  cacheRead:{w:96,min:76}, cacheWrite:{w:96,min:76}, source:{w:110,min:88},
+};
+const COL_FALLBACK={w:96,min:76};
+const colSpec=k=>COL_SPEC[k]||COL_FALLBACK;
+
 // 「更新时间」紧跟模型:它带着警告图标，必须在默认视口里看得见。
 // 放在末尾(与 source 成组)语义更顺，但实测会被右边缘裁掉，图标形同虚设。
 const FIELD_DEFS=[
@@ -434,7 +439,14 @@ function renderTable(data){
   document.getElementById('count').textContent = lang==='zh' ? `${t('totalPrefix')} ${data.total} ${t('totalSuffix')}` : `${data.total} ${t('totalSuffix')}`;
   const defs=FIELD_DEFS.filter(([key])=>visibleFields.includes(key));
   // colgroup 与当前可见字段使用同一份 defs，避免隐藏字段后表头/数据错位。
-  document.getElementById('priceCols').innerHTML=defs.map(([key])=>`<col class="col-${key}">`).join('');
+  // 宽度按可见列的权重折算成百分比，总和恒为 100%，所以表格永远正好铺满容器:
+  // 既不会像写死像素那样撑出容器被裁，也不会在隐藏列后留下大片空白。
+  const sumW=defs.reduce((a,[k])=>a+colSpec(k).w,0)||1;
+  const minW=defs.reduce((a,[k])=>a+colSpec(k).min,0);
+  document.getElementById('priceCols').innerHTML=defs.map(([key])=>
+    `<col class="col-${key}" style="width:${(colSpec(key).w/sumW*100).toFixed(4)}%">`).join('');
+  // 只有窄到放不下「可读下限」时才横滚，此时滚动条落在 .tbl-wrap 内部，不会撑破页面。
+  document.querySelector('.tbl-wrap table').style.minWidth=minW+'px';
   const arrows=c=>`<span class="arrow">${state.sort===c?'▼':'↕'}</span>`;
   document.getElementById('thead').innerHTML='<tr>'+defs.map(([key,label])=>{
     const sortable=['vendor','model','input','output'].includes(key); const cls=['input','output','cacheRead','cacheWrite'].includes(key)?'num':'';

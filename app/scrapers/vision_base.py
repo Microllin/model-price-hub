@@ -234,15 +234,17 @@ class VisionScraper(BaseScraper):
     async def fetch(self) -> list[RawPrice]:
         if not settings.use_playwright:
             return []
+        # 跳过时:定时管线沿用「返回空」的老行为(某个源缺凭据不该中断整轮);
+        # 手动运行(force_vision)才抛出，好让后台把「有意跳过」和「跑了但没结果」分开报。
         if not _has_credentials():
             print(f"  [skip] {self.__class__.__name__}: 无视觉凭据(设 ANTHROPIC_AUTH_TOKEN 或 MPH_ANTHROPIC_API_KEY),跳过")
-            raise VisionSkipped("未配置视觉识别凭据")
+            if self.force_vision:
+                raise VisionSkipped("未配置视觉识别凭据")
+            return []
         # 视觉频率控制:每 N 次管线运行才跑一次视觉 OCR,减少 token 消耗
         if not self.force_vision and not self._should_run_vision():
             print(f"  [skip] {self.__class__.__name__}: 视觉验证本轮跳过(每 {settings.vision_run_every_n} 轮跑一次)")
-            raise VisionSkipped(
-                f"按降频策略本轮跳过(每 {settings.vision_run_every_n} 轮跑一次视觉识别)"
-            )
+            return []
         # 边截图边提取，不把长页面的所有 PNG 同时留在内存中。
         results: dict[str, RawPrice] = {}
         async for png in self._capture():

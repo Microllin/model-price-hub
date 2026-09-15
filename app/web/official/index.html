@@ -87,11 +87,19 @@ html:not(.dark) .hdr { background:linear-gradient(135deg,#06152F 0%,#082B66 60%,
 .field-menu input { accent-color:var(--accent); }
 .cache-cell { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
 .cache-term { display:inline-flex; padding:1px 6px; border-radius:4px; font-size:10px; color:var(--warning); background:rgba(255,115,60,.12); line-height:1.5; }
+.fresh-cell { display:inline-flex; align-items:center; gap:5px; }
+.age { font-size:11px; color:var(--muted); font-family:var(--mono); }
+.age.is-stale { color:var(--warning); }
+/* 警告用主题无关的 --warning 恒定醒目;已下架用 --muted 跟随主题、刻意低调，
+   两者必须视觉可区分:一个是"可能有误"，一个是确定的结论。 */
+.flag { display:inline-flex; padding:1px 5px; border-radius:4px; font-size:10px; line-height:1.5; cursor:help; }
+.flag.stale { color:var(--warning); background:rgba(255,115,60,.12); }
+.flag.delisted { color:var(--muted); background:rgba(148,163,184,.12); }
 .sort-head { border:0; background:transparent; color:inherit; padding:0; cursor:pointer; font:inherit; }
 
 /* ═══════════ 表格(修复对齐:fixed layout + 列宽定义) ═══════════ */
 .tbl-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); background:var(--card); box-shadow:var(--shadow); }
-table { width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; min-width:1280px; }
+table { width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; min-width:1570px; }
 /* 列宽统一在此定义,thead/tbody 严格对齐 */
 col.col-vendor { width:150px; }
 col.col-model { width:210px; }
@@ -103,6 +111,7 @@ col.col-tier { width:92px; }
 col.col-window { width:170px; }
 col.col-input, col.col-output, col.col-cacheRead, col.col-cacheWrite { width:96px; }
 col.col-source { width:110px; }
+col.col-updated { width:120px; }
 thead th {
   background:var(--thead); color:var(--muted); text-align:left;
   padding:10px 12px; font-weight:600; font-size:11px; letter-spacing:.4px;
@@ -203,6 +212,13 @@ const I18N = {
     modalityText:'文本', modalityMultimodal:'多模态', modalityImage:'图像', modalityVideo:'视频',
     modalityAudio:'音频', modalityTts:'语音合成', modalitySearch:'搜索', modalityTraining:'训练',
     modalityStorage:'存储', modalityMcp:'MCP',
+    thUpdated:'更新时间',
+    ageJustNow:'刚刚', ageHours:'{n} 小时前', ageDays:'{n} 天前',
+    flagStale:'沿用旧值', flagDelisted:'已下架',
+    tipFresh:'更新于 {abs}',
+    tipStaleSource:'⚠ 沿用旧值:该厂商最近一次抓取失败，当前显示的仍是 {abs} 采到的旧价格，可能与官网现价不一致。',
+    tipStaleRow:'⚠ 沿用旧值:同来源的其他价格已更新，但这一条本轮没被采到，仍是 {abs} 的旧价格，可能与官网现价不一致。',
+    tipDelisted:'⊘ 已下架:官方页面已不再列出这条价格，最后一次采集于 {abs}，仅供历史参考。',
   },
   en: {
     title:'Official Model Pricing', subtitle:'Pricing scraped from vendor official pages. No LiteLLM / OpenRouter aggregator data.',
@@ -216,6 +232,13 @@ const I18N = {
     modalityText:'text', modalityMultimodal:'multimodal', modalityImage:'image', modalityVideo:'video',
     modalityAudio:'audio', modalityTts:'tts', modalitySearch:'search', modalityTraining:'training',
     modalityStorage:'storage', modalityMcp:'mcp',
+    thUpdated:'Updated',
+    ageJustNow:'just now', ageHours:'{n}h ago', ageDays:'{n}d ago',
+    flagStale:'carried over', flagDelisted:'delisted',
+    tipFresh:'Updated {abs}',
+    tipStaleSource:'⚠ Carried over: the latest scrape for this vendor failed. You are seeing the price captured at {abs}, which may no longer match the vendor page.',
+    tipStaleRow:'⚠ Carried over: other prices from this source were refreshed, but this one was not picked up — still showing the value from {abs}.',
+    tipDelisted:'⊘ Delisted: no longer listed on the vendor page. Last scraped {abs}; kept for reference only.',
   }
 };
 let lang = localStorage.getItem('lang') || 'zh';
@@ -297,12 +320,25 @@ function renderFilters(){
       <div class="field-menu" id="fieldMenu" hidden></div>
     </div>`;
 }
+// 「更新时间」紧跟模型:它带着警告图标，必须在默认视口里看得见。
+// 放在末尾(与 source 成组)语义更顺，但实测会被右边缘裁掉，图标形同虚设。
 const FIELD_DEFS=[
-  ['vendor','thVendor'],['model','thModel'],['modality','thModality'],['context','thCtx'],
+  ['vendor','thVendor'],['model','thModel'],['updated','thUpdated'],['modality','thModality'],['context','thCtx'],
   ['currency','thCurrency'],['billing','thBilling'],['tier','thTier'],['window','thTimeWindow'],
   ['input','thInput'],['output','thOutput'],['cacheRead','thCacheR'],['cacheWrite','thCacheW'],['source','thSource']
 ];
-let visibleFields=JSON.parse(localStorage.getItem('price-visible-fields')||'null')||FIELD_DEFS.map(x=>x[0]);
+// v2:新增「更新时间」列。老 key 里没有 'updated'，沿用老 key 的话存量用户
+// 永远看不到新列(等于功能对他们不生效)，所以换 key 并把新列补进老偏好。
+const FIELD_KEY='price-visible-fields-v2';
+let visibleFields=(function(){
+  try{
+    const cur=JSON.parse(localStorage.getItem(FIELD_KEY)||'null');
+    if(cur&&cur.length) return cur;
+    const old=JSON.parse(localStorage.getItem('price-visible-fields')||'null');
+    if(old&&old.length) return old.concat(['updated']);
+  }catch(e){}
+  return FIELD_DEFS.map(x=>x[0]);
+})();
 function renderFieldMenu(){
   const menu=document.getElementById('fieldMenu'); if(!menu) return;
   menu.innerHTML=`<div class="field-menu-title">${t('fieldsHint')}</div>`+FIELD_DEFS.map(([key,label])=>
@@ -313,7 +349,7 @@ function toggleField(key,enabled){
   if(enabled&&!visibleFields.includes(key)) visibleFields.push(key);
   if(!enabled) visibleFields=visibleFields.filter(x=>x!==key);
   if(!visibleFields.length) visibleFields=['model'];
-  localStorage.setItem('price-visible-fields',JSON.stringify(visibleFields)); renderFieldMenu(); loadPrices();
+  localStorage.setItem(FIELD_KEY,JSON.stringify(visibleFields)); renderFieldMenu(); loadPrices();
 }
 function sf(k,v){ state[k]=v; state.offset=0; loadPrices(); }
 function clearAll(){ state={vendor:'',modality:'',currency:'',billing_unit:'',q:'',sort:'vendor',offset:0}; renderVendorBar(); renderFilters(); loadPrices(); }
@@ -329,6 +365,42 @@ async function loadPrices(){
 /* ── 表格渲染 ── */
 function toggleSort(col){ state.sort=col; state.offset=0; loadPrices(); }
 
+function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// 后端已统一输出带 +00:00 的时间串;老响应可能没有偏移，按 UTC 兜底。
+// 只检查时间部分(slice(10)),否则日期里的 '-' 会被误认成时区偏移。
+function parseTs(v){
+  if(!v) return null;
+  const hasTz=/(?:Z|[+-]\d{2}:?\d{2})$/.test(String(v).slice(10));
+  const d=new Date(hasTz?v:v+'Z');
+  return isNaN(d.getTime())?null:d;
+}
+function fmtTime(v){
+  const d=parseTs(v); if(!d) return '—';
+  return d.toLocaleString(lang==='zh'?'zh-CN':'en-US',
+    {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+function fmtAge(v){
+  const d=parseTs(v); if(!d) return '—';
+  const min=Math.floor((Date.now()-d.getTime())/60000);
+  if(min<60) return t('ageJustNow');
+  if(min<1440) return t('ageHours').replace('{n}',Math.floor(min/60));
+  return t('ageDays').replace('{n}',Math.floor(min/1440));
+}
+function freshCell(r){
+  const abs=fmtTime(r.scraped_at);
+  let tip, flag='';
+  if(r.freshness==='delisted'){
+    tip=t('tipDelisted').replace('{abs}',abs);
+    flag=`<span class="flag delisted" aria-label="${esc(t('flagDelisted'))}">⊘</span>`;
+  }else if(r.freshness==='stale'){
+    tip=(r.stale_reason==='source_failed'?t('tipStaleSource'):t('tipStaleRow')).replace('{abs}',abs);
+    flag=`<span class="flag stale" aria-label="${esc(t('flagStale'))}">⚠</span>`;
+  }else{
+    tip=t('tipFresh').replace('{abs}',abs);
+  }
+  const cls=r.freshness==='stale'?'age is-stale':'age';
+  return `<td title="${esc(tip)}"><span class="fresh-cell"><span class="${cls}">${esc(fmtAge(r.scraped_at))}</span>${flag}</span></td>`;
+}
 function fmtP(v,cls){
   if(v===null||v===undefined) return `<td class="num ${cls}">—</td>`;
   return `<td class="num ${cls}">${v>=1?v.toFixed(2):v.toFixed(4)}</td>`;
@@ -374,7 +446,7 @@ function renderTable(data){
     const sep=(r.vendor!==lastVendor&&lastVendor!=='')?' class="vendor-sep"':''; lastVendor=r.vendor;
     const vn=lang==='zh'?(r.vendor_zh||r.vendor_name):r.vendor_name;
     const src=r.source_url?`<a class="src-link" href="${r.source_url}" target="_blank">${r.source} ↗</a>`:`<span class="src-link">${r.source}</span>`;
-    const cells={vendor:`<td class="vendor-cell" title="${r.vendor_name}">${vn}<span class="en">${r.vendor}</span></td>`,model:`<td class="model-cell" title="${r.model}">${r.model}</td>`,modality:`<td>${modalityLabel(r.modality)}</td>`,context:`<td class="ctx">${fmtCtx(r.context_window)}${r.max_output?' / '+fmtCtx(r.max_output):''}</td>`,currency:`<td>${curTag(r.currency)}</td>`,billing:`<td>${buTag(r.billing_unit)}</td>`,tier:`<td>${r.service_tier&&r.service_tier!=='standard'?`<span class="tag tier">${r.service_tier}</span>`:''}</td>`,window:`<td>${fmtTW(r.time_window)}</td>`,input:fmtP(r.input_price,'p-in'),output:fmtP(r.output_price,'p-out'),cacheRead:cachePrice(r.cached_read,r.cache_state,'p-cache'),cacheWrite:cachePrice(r.cached_write,r.cache_state,'p-cache'),source:`<td>${src}</td>`};
+    const cells={vendor:`<td class="vendor-cell" title="${r.vendor_name}">${vn}<span class="en">${r.vendor}</span></td>`,model:`<td class="model-cell" title="${r.model}">${r.model}</td>`,modality:`<td>${modalityLabel(r.modality)}</td>`,context:`<td class="ctx">${fmtCtx(r.context_window)}${r.max_output?' / '+fmtCtx(r.max_output):''}</td>`,currency:`<td>${curTag(r.currency)}</td>`,billing:`<td>${buTag(r.billing_unit)}</td>`,tier:`<td>${r.service_tier&&r.service_tier!=='standard'?`<span class="tag tier">${r.service_tier}</span>`:''}</td>`,window:`<td>${fmtTW(r.time_window)}</td>`,input:fmtP(r.input_price,'p-in'),output:fmtP(r.output_price,'p-out'),cacheRead:cachePrice(r.cached_read,r.cache_state,'p-cache'),cacheWrite:cachePrice(r.cached_write,r.cache_state,'p-cache'),source:`<td>${src}</td>`,updated:freshCell(r)};
     return `<tr${sep}>${defs.map(([key])=>cells[key]).join('')}</tr>`;
   }).join('');
   renderPager(data.total);

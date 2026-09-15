@@ -38,7 +38,7 @@ import secrets
 import time
 import traceback
 import py_compile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -143,12 +143,120 @@ def vendor_info(slug: str, display_name: str) -> dict[str, str]:
 # 官方数据过滤
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# 价格新鲜度判定
+# ---------------------------------------------------------------------------
+
+# 同一轮抓取内各行的 scraped_at 天然相差数秒，比较时必须留容差。
+# 实测不留容差会把在展的 550 行里误标 533 行为陈旧，功能等于废掉。
+# 容差取 1 小时~7 天结果完全一致(均为 77 行)，说明真实边界很清晰，取 1 小时。
+FRESHNESS_TOLERANCE = timedelta(hours=1)
+
+# 这些状态不代表抓取失败:unavailable 是配置性跳过(如未配视觉凭据)，
+# running/never 是尚无结论。把它们当故障会变成谎报军情。
+_NON_FAILURE_STATUS = {"unavailable", "running", "never"}
+
+# _normalize_probe_status() 里对这条旧错误信息的降级处理，在前台同样适用；
+# 但前台不实例化 scraper registry(太重)，所以只搬这一条基于文本的规则。
+_EMPTY_RESULT_ERROR = "抓取成功但返回 0 条数据,官方页面结构可能已变更"
+
+
+def _as_utc(value: Any) -> datetime | None:
+    """统一成带时区的 UTC。price_plans.scraped_at 是 naive UTC，
+    而 scraper-status.json 里的时间戳带 +00:00，不统一就没法比较。"""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    if not isinstance(value, datetime):
+        return None
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+
+
+def _iso_utc(value: Any) -> str | None:
+    """序列化成带时区的 ISO 串。不带时区的话 JS new Date() 会按本地时区
+    解析 naive UTC，CST 下整整差 8 小时。"""
+    parsed = _as_utc(value)
+    return parsed.isoformat() if parsed else None
+
+
+def _source_failed(status: dict[str, Any] | None) -> bool:
+    """该源最近一次运行是否失败(跑过，但没跑成功)。"""
+    if not status:
+        return False  # 无状态记录(如 override 人工覆盖数据)不算故障
+    if status.get("status") in _NON_FAILURE_STATUS:
+        return False
+    if status.get("error") == _EMPTY_RESULT_ERROR:
+        return False  # 与 _normalize_probe_status 保持一致:降级为待复核，不算故障
+    last_run = _as_utc(status.get("last_run"))
+    if last_run is None:
+        return False
+    last_success = _as_utc(status.get("last_success"))
+    return last_success is None or last_run > last_success
+
+
+def classify_freshness(
+    *,
+    scraped_at: Any,
+    is_current: bool,
+    source: str,
+    status_store: dict[str, Any],
+    source_latest: dict[str, Any],
+) -> tuple[str, str | None]:
+    """判断单条价格的新鲜度，返回 (freshness, stale_reason)。
+
+    按顺序短路:
+      1. 已被软过期        → delisted   (厂商下架，不是爬虫故障)
+      2. 该源最近一次跑失败 → stale/source_failed
+      3. 同源其他行刷新了、本行没有 → stale/not_refreshed
+      4. 其余              → fresh
+    """
+    if not is_current:
+        return "delisted", None
+    status = (status_store or {}).get(source) or {}
+    if _source_failed(status):
+        return "stale", "source_failed"
+
+    # 基准时间取「同源在展行的最新入库时刻」与「该源最近一次成功时刻」的较大值。
+    # 只用前者的话,某个源整体一条都没刷新时(所有行都旧)基准会退化成行自己的
+    # 时间,永远判不出陈旧;后者能戳穿这种情况。
+    current = _as_utc(scraped_at)
+    candidates = [
+        ts for ts in (
+            _as_utc((source_latest or {}).get(source)),
+            _as_utc(status.get("last_success")),
+        ) if ts
+    ]
+    if current and candidates and current < max(candidates) - FRESHNESS_TOLERANCE:
+        return "stale", "not_refreshed"
+    return "fresh", None
+
+
 def official_filters():
     return [
         PricePlan.channel == "official",
         PricePlan.source != "litellm",
         Provider.type == ProviderType.VENDOR,
     ]
+
+
+def _source_latest_scraped(session: Any) -> dict[str, Any]:
+    """每个数据源在展行里最近一次刷新出数据的时间。
+    用于判断"同源其他行更新了、本行没有"。584 行量级，开销可忽略。"""
+    rows = (
+        session.query(PricePlan.source, func.max(PricePlan.scraped_at))
+        .select_from(PricePlan)
+        .join(Model, PricePlan.model_id == Model.id)
+        .join(Provider, Model.provider_id == Provider.id)
+        .filter(*official_filters())
+        .filter(PricePlan.is_current.is_(True))
+        .group_by(PricePlan.source)
+        .all()
+    )
+    return {source: latest for source, latest in rows}
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +386,8 @@ def list_prices(
                 PricePlan.source_url,
                 PricePlan.scraped_at,
                 PricePlan.time_window,
+                PricePlan.is_current,
+                PricePlan.effective_to,
             )
             .select_from(PricePlan)
             .join(Model, PricePlan.model_id == Model.id)
@@ -306,9 +416,20 @@ def list_prices(
             query = query.order_by(col)
         rows = query.offset(offset).limit(limit).all()
 
+        status_store = _status_store()
+        source_latest = _source_latest_scraped(s)
+
         items = []
         for r in rows:
             vi = vendor_info(r.vendor, r.vendor_name)
+            freshness, stale_reason = classify_freshness(
+                scraped_at=r.scraped_at,
+                is_current=bool(r.is_current),
+                source=r.source,
+                status_store=status_store,
+                source_latest=source_latest,
+            )
+            src_status = status_store.get(r.source) or {}
             items.append({
                 "vendor": r.vendor,
                 "vendor_name": r.vendor_name,
@@ -331,8 +452,11 @@ def list_prices(
                 "cached_write": float(r.cached_write) if r.cached_write is not None else None,
                 "source": r.source,
                 "source_url": r.source_url,
-                "scraped_at": r.scraped_at.isoformat() if r.scraped_at else None,
+                "scraped_at": _iso_utc(r.scraped_at),
                 "time_window": r.time_window,
+                "freshness": freshness,
+                "stale_reason": stale_reason,
+                "source_last_success": _iso_utc(src_status.get("last_success")),
             })
         return {"total": total, "items": items}
 

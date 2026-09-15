@@ -91,15 +91,56 @@ def _merge_tiers(tiers: list[str]) -> str:
 # ---------------------------------------------------------------------------
 # 各 tab 的标签名
 # ---------------------------------------------------------------------------
-_FLAGSHIP_TABS = ["视觉理解"]
-_INFERENCE_TABS = [
-    "Reasoning models",
-    "Multimodal Models",
-    "Real-time",
-    "Embedding Models",
-    "More",
+# 2026-09 页面改版:原先那 7 个 tab(视觉理解 / Reasoning models / ... )已不存在。
+# 新版定价页用 button.tab-pill 做三个分区,按序号点击最稳(按文案定位会命中隐藏的导航菜单)。
+_PILL_SELECTOR = "button.tab-pill"
+
+# 卡片里的标签 → 我们关心的字段
+_LABEL_INPUT = {"输入单价", "输入价格"}
+_LABEL_OUTPUT = {"输出单价", "输出价格"}
+_LABEL_CACHE_READ = {"缓存命中"}
+_LABEL_CTX = {"上下文"}
+_LABEL_UNIT_PRICE = {"单价"}
+_CARD_LABELS = (
+    _LABEL_INPUT | _LABEL_OUTPUT | _LABEL_CACHE_READ | _LABEL_CTX | _LABEL_UNIT_PRICE
+    | {"缓存存储", "输入模态", "输出模态", "最大输出", "特点", "Batch API定价", "支持范围", "多分辨率"}
+)
+
+# 卡片里的模型名(一行一个,后面跟若干「标签/值」对)
+_CARD_MODEL = re.compile(
+    r"^(GLM-[\w.\-]+|CogView-[\w.\-]+|CogVideoX[\w.\-]*|Vidu[\w .\-]*|Embedding-\d+[\w.\-]*|CodeGeeX-[\w.\-]+)$",
+    re.I,
+)
+
+# 价格写法 → (单位, 正则)。注意 "百万Tokens" 要排在 "/ M" 之前不会冲突:
+# 前者斜杠后是「百」,后者是「M」,互不匹配。
+_PRICE_FORMS = [
+    ("token", re.compile(r"([\d.]+)\s*元\s*/\s*百万\s*tokens", re.I)),
+    ("token", re.compile(r"([\d.]+)\s*元\s*/\s*M(?![a-z])", re.I)),
+    ("10k_chars", re.compile(r"([\d.]+)\s*元\s*/\s*万\s*字符")),
+    ("request", re.compile(r"([\d.]+)\s*元\s*/\s*次")),
+    ("minute", re.compile(r"([\d.]+)\s*元\s*/\s*分钟")),
+    # 兜底:部分卡片把单位写在列头,值里只剩「8元」。这类卡片都带「上下文」,
+    # 是按 token 计费的文本模型,按 token 处理。放最后,避免抢走带单位的写法。
+    ("token", re.compile(r"^([\d.]+)\s*元$")),
 ]
-_FINETUNE_TABS = ["Model Inference"]
+_FREE_TEXT = re.compile(r"^(限时)?免费$")
+
+
+def _parse_price(value: str) -> tuple[float | None, str | None]:
+    """把卡片里的价格值解析成 (数值, 计费单位)。认不出就返回 (None, None)。"""
+    if not value:
+        return None, None
+    if _FREE_TEXT.match(value.strip()):
+        return 0.0, None
+    for unit, pattern in _PRICE_FORMS:
+        m = pattern.search(value)
+        if m:
+            try:
+                return float(m.group(1)), unit
+            except ValueError:
+                return None, None
+    return None, None
 
 
 class ZhipuScraper(BaseScraper):
@@ -135,25 +176,22 @@ class ZhipuScraper(BaseScraper):
                     await page.wait_for_timeout(500)
                 await page.wait_for_timeout(1000)
 
-                # 收集默认 tab 的文本
+                # 逐个点击分区 pill 并累积文本。按序号点而不是按文案:
+                # 页面顶部的隐藏导航菜单里也有「模型」「知识库」字样,按文案会点中它们,
+                # 结果是三个分区拿到完全相同的文本(改版后曾因此只解析出 3 条)。
                 texts = [await page.inner_text("body")]
-
-                # 依次点击所有隐藏 tab 并收集文本
-                all_tabs = _FLAGSHIP_TABS + _INFERENCE_TABS + _FINETUNE_TABS
-                for label in all_tabs:
+                try:
+                    pills = page.locator(_PILL_SELECTOR)
+                    count = await pills.count()
+                except Exception:
+                    count = 0
+                for index in range(count):
                     try:
-                        loc = page.get_by_text(label, exact=True)
-                        cnt = await loc.count()
-                        if cnt > 0:
-                            for i in range(cnt):
-                                el = loc.nth(i)
-                                if await el.is_visible():
-                                    await el.click()
-                                    await page.wait_for_timeout(1500)
-                                    break
-                            texts.append(await page.inner_text("body"))
+                        await pills.nth(index).click(force=True)
+                        await page.wait_for_timeout(2500)
+                        texts.append(await page.inner_text("body"))
                     except Exception:
-                        pass
+                        continue
 
                 return "\n".join(texts)
             finally:
@@ -163,6 +201,97 @@ class ZhipuScraper(BaseScraper):
     # parse：统一入口
     # ==================================================================
     def parse(self, text: str) -> list[RawPrice]:
+        """优先按新版卡片布局解析;拿不到再退回旧版表格逻辑。
+
+        2026-09 定价页改版:价格从表格改成「模型名 + 若干标签/值」的卡片,
+        旧解析器只认得旗舰区那几行,22 条掉到 3 条。卡片解析覆盖全部分区;
+        保留旧逻辑是为了万一页面回滚或还有残留表格时不至于一条都抓不到。
+        """
+        rows = self._parse_cards(text)
+        return rows if rows else self._parse_legacy(text)
+
+    def _parse_cards(self, text: str) -> list[RawPrice]:
+        """解析新版卡片:模型名独占一行,其后是「标签」「值」交替的行。"""
+        lines = [ln.strip() for ln in text.splitlines()]
+        lines = [ln for ln in lines if ln]
+        results: list[RawPrice] = []
+        seen: set[tuple] = set()
+
+        index = 0
+        while index < len(lines):
+            match = _CARD_MODEL.match(lines[index])
+            if not match:
+                index += 1
+                continue
+            model = match.group(1)
+            index += 1
+            fields: dict[str, str] = {}
+            # 收集到下一个模型名为止
+            while index < len(lines) and not _CARD_MODEL.match(lines[index]):
+                label = lines[index]
+                if label in _CARD_LABELS and index + 1 < len(lines):
+                    value = lines[index + 1]
+                    if value not in _CARD_LABELS and not _CARD_MODEL.match(value):
+                        fields.setdefault(label, value)
+                        index += 2
+                        continue
+                index += 1
+
+            row = self._card_to_price(model, fields)
+            if row is not None and row.key() not in seen:
+                seen.add(row.key())
+                results.append(row)
+        return results
+
+    def _card_to_price(self, model: str, fields: dict[str, str]) -> RawPrice | None:
+        """把一张卡片的标签/值组装成 RawPrice;没有任何价格就返回 None。"""
+        unit: str | None = None
+        values: dict[str, float] = {}
+        for labels, key in (
+            (_LABEL_INPUT, "input"),
+            (_LABEL_OUTPUT, "output"),
+            (_LABEL_CACHE_READ, "cache_read"),
+            (_LABEL_UNIT_PRICE, "unit_price"),
+        ):
+            for label in labels:
+                if label in fields:
+                    price, price_unit = _parse_price(fields[label])
+                    if price is not None:
+                        values[key] = price
+                        unit = unit or price_unit
+                    break
+
+        # 「单价」型卡片(如 TTS 按万字符计)只有一个价,记为输入价
+        if "input" not in values and "unit_price" in values:
+            values["input"] = values.pop("unit_price")
+        values.pop("unit_price", None)
+        if not values:
+            return None
+
+        ctx_win = None
+        for label in _LABEL_CTX:
+            if label in fields:
+                cw = _CTX_WIN.match(fields[label])
+                if cw:
+                    val = int(cw.group(1))
+                    ctx_win = val * 1000 if cw.group(2).upper() == "K" else val * 1_000_000
+                break
+
+        return RawPrice(
+            provider="zhipu",
+            channel="official",
+            model=model,
+            region=Region.CN,
+            currency=Currency.CNY,
+            input_per_1m=values.get("input"),
+            output_per_1m=values.get("output"),
+            cached_input_per_1m=values.get("cache_read"),
+            context_window=ctx_win,
+            billing_unit=unit or "token",
+            source_url=self.source_url,
+        )
+
+    def _parse_legacy(self, text: str) -> list[RawPrice]:
         results: list[RawPrice] = []
         seen: set[tuple] = set()
 

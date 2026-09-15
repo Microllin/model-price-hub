@@ -1,6 +1,6 @@
 {
   "vision-zhipu": {
-    "max_shots_per_page": 15,
+    "max_shots_per_page": 6,
     "tab_selectors": [
       "模型",
       "搜索",
@@ -10,6 +10,7 @@
       "https://open.bigmodel.cn/pricing"
     ],
     "applied_at": "2026-09-15T14:03:56.519660+00:00",
-    "applied_by": "admin"
+    "applied_by": "admin",
+    "note": "该页总高约 3807px，按 640px 步进最多 6 张；设更大值无效"
   }
 }

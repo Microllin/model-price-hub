@@ -52,6 +52,7 @@ class RawPrice(BaseModel):
     cache_write_per_1m: float | None = None
     context_window: int | None = None
     max_output: int | None = None
+    deployment_version: str | None = None  # 厂商部署版本，如 8k-int8 / 200k-fp8
     # 价格维度：同一模型可有 standard/flex/priority、不同模态和时段价格
     service_tier: str = "standard"
     modality: str = "text"
@@ -66,7 +67,7 @@ class RawPrice(BaseModel):
 
     @property
     def condition_key(self) -> str:
-        payload = {"service_tier": self.service_tier, "modality": self.modality, "billing_unit": self.billing_unit, "cache_state": self.cache_state, "context_range": self.context_range, "time_window": self.time_window}
+        payload = {"service_tier": self.service_tier, "modality": self.modality, "billing_unit": self.billing_unit, "cache_state": self.cache_state, "context_range": self.context_range, "deployment_version": self.deployment_version, "time_window": self.time_window}
         return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=lambda value: value.isoformat() if isinstance(value, datetime) else str(value))
 
     def key(self) -> tuple:
@@ -81,6 +82,7 @@ class RawPrice(BaseModel):
             self.billing_unit,
             self.cache_state or "",
             self.context_range or "",
+            self.deployment_version or "",
             json.dumps(self.time_window, sort_keys=True) if self.time_window else "",
             self.source,
         )
@@ -101,6 +103,7 @@ class PriceEntry(BaseModel):
     cache_write_per_1m: float | None = None
     context_window: int | None = None
     max_output: int | None = None
+    deployment_version: str | None = None
     service_tier: str = "standard"
     modality: str = "text"
     billing_unit: str = "token"
@@ -125,6 +128,7 @@ class PriceEntry(BaseModel):
             "billing_unit": self.billing_unit,
             "cache_state": self.cache_state,
             "context_range": self.context_range,
+            "deployment_version": self.deployment_version,
             "time_window": self.time_window,
         }
         return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=lambda value: value.isoformat() if isinstance(value, datetime) else str(value))

@@ -1,0 +1,294 @@
+<title>定价采集链路评审</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<style>
+  :root{
+    --paper:#FBFCFD; --surface:#F1F4F6; --surface-2:#E7ECEF;
+    --ink:#101820; --ink-2:#39485A; --muted:#64748B; --faint:#94A3B2;
+    --rule:#DCE3E8; --rule-2:#C9D4DB;
+    --accent:#0E6E8C; --accent-soft:#E2EFF4;
+    --crit:#B3261E; --warn:#A05A00; --ok:#12704A;
+    --sans:"IBM Plex Sans","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+    --serif:"Source Serif 4","Songti SC","Noto Serif SC",Georgia,serif;
+    --mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  :root:not([data-theme="light"]){
+    @media (prefers-color-scheme:dark){
+      --paper:#0D1216; --surface:#141C22; --surface-2:#1C262E;
+      --ink:#E8EFF3; --ink-2:#B6C6D0; --muted:#8699A6; --faint:#647585;
+      --rule:#233039; --rule-2:#2E3E49;
+      --accent:#5BB8D4; --accent-soft:#14303C;
+      --crit:#F08A80; --warn:#E0A44A; --ok:#5CC79A;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0D1216; --surface:#141C22; --surface-2:#1C262E;
+    --ink:#E8EFF3; --ink-2:#B6C6D0; --muted:#8699A6; --faint:#647585;
+    --rule:#233039; --rule-2:#2E3E49;
+    --accent:#5BB8D4; --accent-soft:#14303C;
+    --crit:#F08A80; --warn:#E0A44A; --ok:#5CC79A;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--paper); color:var(--ink); font-family:var(--sans);
+    font-size:15px; line-height:1.65; margin:0;
+    padding-inline:20px; padding-block:0 72px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:860px; margin:0 auto}
+
+  header{padding-block:56px 30px; border-bottom:2px solid var(--ink)}
+  .eyebrow{
+    font-family:var(--mono); font-size:11.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); margin-bottom:14px;
+  }
+  h1{
+    font-family:var(--serif); font-weight:600; font-size:clamp(30px,5vw,44px);
+    line-height:1.14; letter-spacing:-.015em; margin:0 0 14px; text-wrap:balance;
+  }
+  .lede{font-size:16.5px; color:var(--ink-2); margin:0; max-width:62ch}
+
+  .tally{
+    display:flex; flex-wrap:wrap; gap:0; margin-top:28px;
+    border:1px solid var(--rule); border-radius:3px; overflow:hidden;
+  }
+  .tally div{
+    flex:1 1 130px; padding:13px 16px; background:var(--surface);
+    border-right:1px solid var(--rule);
+  }
+  .tally div:last-child{border-right:0}
+  .tally b{
+    display:block; font-family:var(--mono); font-size:22px; font-weight:500;
+    font-variant-numeric:tabular-nums; line-height:1.2;
+  }
+  .tally span{font-size:12px; color:var(--muted)}
+
+  h2{
+    font-family:var(--serif); font-weight:600; font-size:23px; letter-spacing:-.01em;
+    margin:52px 0 6px; padding-top:22px; border-top:1px solid var(--rule-2);
+  }
+  .sect-note{font-size:13.5px; color:var(--muted); margin:0 0 22px; max-width:60ch}
+
+  .item{
+    border-left:2px solid var(--rule-2); padding:2px 0 2px 18px; margin-bottom:26px;
+  }
+  .item.crit{border-left-color:var(--crit)}
+  .item.warn{border-left-color:var(--warn)}
+  .item.ok{border-left-color:var(--ok)}
+
+  .ev{
+    font-family:var(--mono); font-size:12.5px; font-variant-numeric:tabular-nums;
+    color:var(--accent); background:var(--accent-soft);
+    display:inline-block; padding:2px 8px; border-radius:2px; margin-bottom:7px;
+  }
+  .item h3{
+    font-size:16.5px; font-weight:600; margin:0 0 6px; line-height:1.4; text-wrap:balance;
+  }
+  .item p{margin:0 0 6px; color:var(--ink-2); max-width:64ch}
+  .item p:last-child{margin-bottom:0}
+  .why{font-size:13.5px; color:var(--muted)}
+
+  table{
+    width:100%; border-collapse:collapse; margin:18px 0 6px;
+    font-size:13.5px; font-variant-numeric:tabular-nums;
+  }
+  .scroll{overflow-x:auto}
+  th,td{padding:8px 12px 8px 0; text-align:left; border-bottom:1px solid var(--rule)}
+  th{
+    font-family:var(--mono); font-weight:500; font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--muted); border-bottom-color:var(--rule-2);
+  }
+  td.num{font-family:var(--mono)}
+  .win{color:var(--ok); font-weight:500}
+  .lose{color:var(--crit)}
+
+  .verdict{
+    background:var(--surface); border:1px solid var(--rule);
+    border-left:3px solid var(--accent); border-radius:3px;
+    padding:18px 20px; margin:22px 0;
+  }
+  .verdict h3{font-size:16px; margin:0 0 7px; font-weight:600}
+  .verdict p{margin:0; color:var(--ink-2); max-width:62ch}
+
+  .ask{
+    font-family:var(--mono); font-size:11.5px; letter-spacing:.06em;
+    color:var(--warn); text-transform:uppercase; margin-top:8px; display:block;
+  }
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--rule);
+    font-size:13px; color:var(--faint);
+  }
+  footer code{font-family:var(--mono); font-size:12.5px; color:var(--muted)}
+  @media (max-width:520px){
+    header{padding-block:38px 24px}
+    .item{padding-left:14px}
+  }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">一小时端到端评审 · 2026-09-15</div>
+  <h1>定价采集链路评审</h1>
+  <p class="lede">从「官方页面 → 取页 → 解析 → 入库 → 前台」这条主链逐环实测，找断点、量成本、定位置。以下每条都带实测数字，没有推测。</p>
+  <div class="tally">
+    <div><b>10</b><span>已修复并推送</span></div>
+    <div><b>6</b><span>待你决策</span></div>
+    <div><b>238</b><span>测试全通过</span></div>
+    <div><b>589</b><span>前台在展价格</span></div>
+  </div>
+</header>
+
+<h2>核心结论：截图识别是校验工具，不是采集工具</h2>
+<p class="sect-note">这是本次评审最重要的一条。同一个智谱定价页，两种方式各跑两次。</p>
+<div class="scroll">
+<table>
+  <tr><th>对比项</th><th>网页解析</th><th>截图识别</th></tr>
+  <tr><td>抓到模型</td><td class="num win">6 个</td><td class="num lose">2 个</td></tr>
+  <tr><td>耗时</td><td class="num win">48 秒</td><td class="num lose">121 秒</td></tr>
+  <tr><td>费用</td><td class="num win">0</td><td class="num lose">按次计费</td></tr>
+  <tr><td>重复运行</td><td class="num win">结果一致</td><td class="num lose">两次认出的模型不同</td></tr>
+  <tr><td>价格准确性</td><td class="num">基准</td><td class="num win">完全一致</td></tr>
+</table>
+</div>
+<div class="verdict">
+  <h3>它读得准，只是读得少</h3>
+  <p>召回率约三分之一，但读出来的数字与解析结果分毫不差。所以它的价值在于<strong>确认解析结果没抓错</strong>，而不是自己去采集。把它当采集主力，是用 2.5 倍的时间和额外的钱换三分之一的结果。</p>
+</div>
+<div class="item warn">
+  <div class="ev">截图张数 6 → 15，耗时 120s → 121s</div>
+  <h3>调大截图张数是无效操作</h3>
+  <p>该页总高 3807px，按 640px 步进最多就是 6 张——整页其实已被完整覆盖。瓶颈在识别环节，不在截图数量。配置项超过这个上限后就是摆设，界面不会提示。</p>
+  <p class="why">已在配置里注明原因，避免下次又有人调大。</p>
+</div>
+
+<h2>已修复</h2>
+<p class="sect-note">十项，均已提交并推送。按影响排序。</p>
+
+<div class="item crit">
+  <div class="ev">xAI 连接超时 · Mistral 取到 34 万字符解析出 0 条</div>
+  <h3>两种完全不同的故障被报成同一句话</h3>
+  <p>xAI 是页面根本打不开（该配代理），Mistral 是页面拿到了但解析不出（该修解析器）。后台统一报「未解析出价格数据」。</p>
+  <p class="why">按这句话去修 xAI 的解析器，修一整天也修不好——它压根没拿到页面。现在如实列出每一级的结果。</p>
+</div>
+
+<div class="item crit">
+  <div class="ev">全库 106 组 · 牵涉 567 条价格行</div>
+  <h3>同一个模型被建成两条记录</h3>
+  <p>网页解析拿到 <code>GLM-5.3</code>，截图识别吐出 <code>glm-5.3</code>，系统按精确字符串匹配，当成两个不同模型。前台并排显示两行一模一样的价格，模型总数也虚高。</p>
+  <p class="why">已改为忽略大小写匹配，堵住来源。视觉识别刚打通凭据，不堵住会成倍放大。</p>
+</div>
+
+<div class="item warn">
+  <div class="ev">后台勾了「视觉 OCR」，视觉侧仍报未配置</div>
+  <h3>配置存在一个地方，读在另一个地方</h3>
+  <p>后台的 Key 存进一个文件，视觉采集器去另一个文件找，两边互不相通。界面显示配好了，实际一直静默跳过。</p>
+  <p class="why">打通后视觉识别首次端到端跑通：124 秒采到 4 条价格并入库。</p>
+</div>
+
+<div class="item warn">
+  <div class="ev">手动点运行，14 毫秒返回</div>
+  <h3>手动运行被降频策略静默拦下</h3>
+  <p>视觉识别每 5 轮才真跑一次以省 token，但人手动点击时同样被拦，还报成「未解析出价格数据」。</p>
+  <p class="why">降频是给定时任务的策略；人明确点了运行就该跑。</p>
+</div>
+
+<div class="item warn">
+  <div class="ev">HTTP 200 + 网页 HTML，而非 API 响应</div>
+  <h3>AI 修复调用打到了网站首页</h3>
+  <p>Key 的地址没带 <code>/v1</code>，请求发到了错误路径。网关对未知路径返回 200 加一张网页，于是状态码检查放行、解析 JSON 才失败，报错只有一句 <code>JSONDecodeError</code>，完全指不到根因。</p>
+  <p class="why">两类 AI 修复走同一个调用，所以一起失效。</p>
+</div>
+
+<div class="item warn">
+  <div class="ev">显示「浏览器渲染 → 网页源码」，实际走截图识别</div>
+  <h3>视觉采集器显示的取页方式是假的</h3>
+  <p>它们的代码根本不看这个链，后台却照搬字段显示。</p>
+</div>
+
+<div class="item ok">
+  <div class="ev">顶部 592 · 表格 589 · 厂商标签 89 vs 86</div>
+  <h3>统计口径与表格对不上（本次评审自己引入的回归）</h3>
+  <p>前台改成合并口径后，顶部统计和厂商标签仍按原始行数算。合并键已抽成唯一定义，两边共用，四处数字现已一致。</p>
+</div>
+
+<div class="item ok">
+  <div class="ev">时段列 100% 为空却占 170 权重 · 模型列需 295px 只给 210</div>
+  <h3>列宽是拍脑袋配的</h3>
+  <p>实测 200 行每列「装下最长内容所需宽度」与空值率后重新配平。模型列截断在 1600px 下从 24 处降到 2 处。</p>
+</div>
+
+<div class="item ok">
+  <div class="ev">前台 3 条价格现标记为双源印证</div>
+  <h3>同一条价格被多个采集器各列一行</h3>
+  <p>那是我们内部有几个采集器，不是厂商有两个价。现在合并成一行，并把「几个来源都印证了」变成可信度信号。</p>
+</div>
+
+<div class="item ok">
+  <div class="ev">降级链 → 取页方式</div>
+  <h3>开发者术语直接抛给运营，看不懂也调不了</h3>
+  <p>改成大白话并可点击调整：厂商接口 / 网页源码 / 浏览器渲染 / 截图识别，各自标明代价。改完不用重建镜像，随时可回退。</p>
+</div>
+
+<h2>待你决策</h2>
+<p class="sect-note">这些我只做了诊断，没有动手——它们要么是数据迁移，要么涉及成本或运维决策。</p>
+
+<div class="item crit">
+  <div class="ev">临时安装，容器重建即失效</div>
+  <h3>视觉识别依赖的包不在镜像里</h3>
+  <p>运行镜像按不含视觉依赖的方式构建。现在是我临时装进运行容器的，容器一重建就没了，视觉识别会再次全线失效。</p>
+  <span class="ask">需要重建一次镜像（约十几分钟）</span>
+</div>
+
+<div class="item crit">
+  <div class="ev">显示价优先取视觉主源</div>
+  <h3>已停用的旧站，可信度优先级是反的</h3>
+  <p>那套交叉验证逻辑把截图识别当成最可信的源——而实测它召回率只有三分之一。目前该站已停，没有实际影响。</p>
+  <span class="ask">若要恢复旧站或复用这套逻辑，须先反转优先级</span>
+</div>
+
+<div class="item warn">
+  <div class="ev">106 组 · 567 条价格行（在展 534）</div>
+  <h3>存量重复模型是否合并</h3>
+  <p>来源已堵住，但历史数据里的重复仍在。合并属于数据迁移，需要备份与逐组核对。前台目前只受影响 4 行。</p>
+  <span class="ask">是否安排一次数据清理</span>
+</div>
+
+<div class="item warn">
+  <div class="ev">讯飞 / Mistral / 阶跃：页面取得到，解析出 0 条</div>
+  <h3>三个解析器失效，需逐个修</h3>
+  <p>它们都已在用浏览器渲染，改取页方式救不了。讯飞最后一次成功是 8 月 25 日。</p>
+  <span class="ask">优先修哪个，还是先用 AI 诊断逐个过一遍</span>
+</div>
+
+<div class="item warn">
+  <div class="ev">docs.x.ai 连接超时</div>
+  <h3>xAI 需要代理才能采集</h3>
+  <p>不是代码问题。系统支持配置代理，但当前未设置。</p>
+  <span class="ask">是否配置代理，或暂时放弃该厂商</span>
+</div>
+
+<div class="item warn">
+  <div class="ev">当前数据中 100% 为空</div>
+  <h3>「时段」列是否默认隐藏</h3>
+  <p>已把它的宽度份额让给模型列。但它在当前所有数据里一行都没有内容——分时定价目前没有厂商在用。</p>
+  <span class="ask">默认隐藏，还是保留等将来有数据</span>
+</div>
+
+<h2>不建议做</h2>
+<div class="item">
+  <div class="ev">召回 1/3 · 2.5 倍耗时 · 按次计费</div>
+  <h3>把截图识别设为默认兜底</h3>
+  <p>数据不支持。它至今没贡献过任何新信息——认出的每个模型普通脚本都已抓到，价格还一模一样。</p>
+</div>
+<div class="item">
+  <div class="ev">受页面高度限制</div>
+  <h3>继续调大截图张数</h3>
+  <p>超过页面实际高度后完全无效，只会让人以为在优化。</p>
+</div>
+
+<footer>
+  本次改动共 10 个提交，全部已推送至 <code>main</code>。测试 238 个全通过。<br>
+  平台现状：23 个采集器（16 正常）· 前台 589 条价格（472 正常 / 6 陈旧 / 111 已下架）。
+</footer>
+</div>

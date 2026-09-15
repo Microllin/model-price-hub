@@ -390,7 +390,7 @@ function scraperRows(list){
         <button class="btn sm" onclick="runOne('${s.name}',this)">▶ 运行</button>
         <button class="btn sm" onclick="openVendor('${s.provider}')">✏️</button>
         <button class="btn sm" onclick="openDetail('${s.name}')">📋</button>
-        ${repairBtn(s)}
+        ${repairBtn(s)}${visionCfgBtns(s)}
       </div>${repairBadge}</td>
     </tr>`;
   }).join('');
@@ -405,6 +405,43 @@ function repairBtn(s){
   const tip=vision?'看现场截图诊断截取配置':'读脚本源码诊断解析逻辑';
   const dis=ok?'':' disabled title="当前状态无需修复"';
   return `<button class="btn sm danger"${dis} title="${esc(tip)}" onclick="aiRepair('${s.name}',this)">${label}</button>`;
+}
+
+// 视觉采集器的配置落地:AI 修复只出建议，这里把建议写进运行时覆盖配置。
+// 不改代码，所以随时可回退，也不用为改几个选择器重建镜像。
+function visionCfgBtns(s){
+  if(!s.is_vision) return '';
+  const applied=!!s.vision_config;
+  const canApply=s.repair&&s.repair.has_vision_fix;
+  let html='';
+  if(canApply) html+=`<button class="btn sm" title="把 AI 给出的截取配置写入生效" onclick="applyVisionCfg('${s.name}',this)">✅ 应用建议</button>`;
+  if(applied) html+=`<button class="btn sm" title="${esc(cfgSummary(s.vision_config))}" onclick="revertVisionCfg('${s.name}',this)">↩ 回退配置</button>`;
+  return html;
+}
+function cfgSummary(c){
+  if(!c) return '';
+  const parts=[];
+  if(c.tab_selectors&&c.tab_selectors.length) parts.push('点击 tab:'+c.tab_selectors.join('/'));
+  if(c.screenshot_urls&&c.screenshot_urls.length) parts.push('截取 '+c.screenshot_urls.length+' 个 URL');
+  if(c.max_shots_per_page) parts.push('每页 '+c.max_shots_per_page+' 张');
+  return (parts.join(' · ')||'无')+`(${fmtTime(c.applied_at)} 由 ${c.applied_by||'-'} 应用)`;
+}
+async function applyVisionCfg(name,btn){
+  btn.disabled=true; const old=btn.textContent; btn.textContent='应用中…';
+  try{
+    const r=await api(`/admin/scrapers/${name}/vision-config`,{method:'POST',body:'{}'});
+    toast(`✅ 已应用:${cfgSummary(r.applied)}`,'ok');
+    await loadScrapers();
+  }catch(e){ toast('应用失败:'+(e.message||e),'err'); btn.disabled=false; btn.textContent=old; }
+}
+async function revertVisionCfg(name,btn){
+  if(!confirm('回退到代码里的默认配置?')) return;
+  btn.disabled=true; const old=btn.textContent; btn.textContent='回退中…';
+  try{
+    await api(`/admin/scrapers/${name}/vision-config`,{method:'DELETE'});
+    toast('↩ 已回退到默认配置','ok');
+    await loadScrapers();
+  }catch(e){ toast('回退失败:'+(e.message||e),'err'); btn.disabled=false; btn.textContent=old; }
 }
 
 function repairTag(r){

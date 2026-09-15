@@ -38,6 +38,7 @@ import os
 import secrets
 import time
 import traceback
+from urllib.parse import urlparse
 import py_compile
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
@@ -70,6 +71,7 @@ SCRAPER_STATUS_PATH = DATA / "scraper-status.json"
 LLM_KEYS_PATH = DATA / "llm-keys.json"
 VENDOR_INFO_PATH = DATA / "vendor-info.json"
 REPAIR_TASKS_PATH = DATA / "repair-tasks.json"
+VISION_OVERRIDES_PATH = DATA / "vision-overrides.json"
 SCRAPER_DRAFTS_PATH = DATA / "scraper-drafts.json"
 SESSION_COOKIE = "mph_official_session"
 SESSION_TTL = 7 * 24 * 3600
@@ -717,6 +719,7 @@ def admin_scrapers(admin: dict = Depends(require_admin)):
     store = _status_store()
     repairs = _read_json(REPAIR_TASKS_PATH, {})
     baselines = _provider_baselines()
+    vision_overrides = _read_json(VISION_OVERRIDES_PATH, {})
     items = []
     scrapers = {s.source_name: s for s in _official_scrapers()}
     for meta in _scraper_registry():
@@ -744,7 +747,15 @@ def admin_scrapers(admin: dict = Depends(require_admin)):
                 "status": rep.get("status"),           # diagnosing/suggested/applied/failed
                 "updated_at": rep.get("updated_at"),
                 "summary": rep.get("summary"),
+                # 有无可落地的配置建议,决定后台要不要显示「应用建议」
+                "has_vision_fix": bool(
+                    (rep.get("detail") or {}).get("suggested_tab_selectors")
+                    or (rep.get("detail") or {}).get("suggested_screenshot_urls")
+                    or (rep.get("detail") or {}).get("suggested_max_shots_per_page")
+                ),
             } if rep else None,
+            # 生效中的运行时覆盖配置(仅视觉采集器);None = 用代码里的默认值
+            "vision_config": vision_overrides.get(meta["name"]),
         })
     return {
         "items": items,
@@ -1237,7 +1248,8 @@ async def _run_vision_repair(
   "page_changed": true/false,
   "price_table_visible": true/false,
   "suggested_tab_selectors": ["从截图里读到的 tab 文案,没有则空数组"],
-  "suggested_screenshot_urls": ["若应改截别的 URL 则给出,否则空数组"],
+  "suggested_screenshot_urls": ["若应改截别的 URL 则给出,否则空数组(必须仍是本厂商域名)"],
+  "suggested_max_shots_per_page": 1-30 的整数,若当前张数不足以覆盖整页则给出,否则 null,
   "fix_suggestion": "具体怎么改(中文)",
   "confidence": 0.0-1.0
 }}"""
@@ -1360,6 +1372,112 @@ async def admin_ai_repair(name: str, admin: dict = Depends(require_admin)):
     _set_repair_progress(task_id, name=name, status="queued", progress=5, message="已排队等待 AI 修复")
     asyncio.create_task(_run_ai_repair(task_id, name, key, st))
     return {"ok": True, "task_id": task_id, "status": _repair_tasks[task_id]}
+
+
+_VISION_CONFIG_FIELDS = ("tab_selectors", "screenshot_urls", "max_shots_per_page")
+
+
+class VisionConfigInput(BaseModel):
+    """留空则采用该采集器最近一次 AI 视觉修复给出的建议。"""
+    tab_selectors: list[str] | None = None
+    screenshot_urls: list[str] | None = None
+    max_shots_per_page: int | None = None
+
+
+def _vision_scraper_or_404(name: str) -> Any:
+    scraper = next((s for s in _official_scrapers() if s.source_name == name), None)
+    if scraper is None:
+        raise HTTPException(404, f"未找到抓取器: {name}")
+    is_vision = name.startswith("vision-") or "vision" in type(scraper).__name__.lower()
+    if not is_vision:
+        raise HTTPException(400, "该接口只适用于视觉采集器")
+    return scraper
+
+
+def _validate_vision_config(scraper: Any, body: VisionConfigInput) -> dict[str, Any]:
+    """校验要落盘的配置。建议来自大模型,不能直接照单全收。"""
+    out: dict[str, Any] = {}
+
+    if body.tab_selectors is not None:
+        tabs = [t.strip() for t in body.tab_selectors if isinstance(t, str) and t.strip()]
+        if len(tabs) > 20:
+            raise HTTPException(400, "tab 数量过多(上限 20)")
+        if any(len(t) > 40 for t in tabs):
+            raise HTTPException(400, "tab 文案过长(单个上限 40 字符)")
+        out["tab_selectors"] = tabs
+
+    if body.screenshot_urls is not None:
+        base_host = urlparse(getattr(scraper, "source_url", "")).netloc
+        urls = [u.strip() for u in body.screenshot_urls if isinstance(u, str) and u.strip()]
+        if len(urls) > 10:
+            raise HTTPException(400, "URL 数量过多(上限 10)")
+        for u in urls:
+            parsed = urlparse(u)
+            if parsed.scheme not in {"http", "https"}:
+                raise HTTPException(400, f"非法 URL: {u}")
+            # 不允许把采集目标改到别的站点:建议由大模型生成,必须锁在本厂商域名内,
+            # 否则一次误判就能让采集器去抓任意网址。
+            if base_host and parsed.netloc != base_host:
+                raise HTTPException(400, f"URL 域名与该厂商不一致({parsed.netloc} != {base_host})")
+        out["screenshot_urls"] = urls
+
+    if body.max_shots_per_page is not None:
+        shots = int(body.max_shots_per_page)
+        if not 1 <= shots <= 30:
+            raise HTTPException(400, "截图张数需在 1~30 之间")
+        out["max_shots_per_page"] = shots
+
+    if not out:
+        raise HTTPException(400, "没有可应用的配置项")
+    return out
+
+
+@app.post("/api/admin/scrapers/{name}/vision-config")
+def admin_apply_vision_config(
+    name: str, body: VisionConfigInput, admin: dict = Depends(require_admin)
+):
+    """把 AI 视觉修复的建议落成运行时配置(不改代码,可随时回退)。"""
+    scraper = _vision_scraper_or_404(name)
+
+    if body.tab_selectors is None and body.screenshot_urls is None and body.max_shots_per_page is None:
+        detail = ((_read_json(REPAIR_TASKS_PATH, {}).get(name) or {}).get("detail")) or {}
+        if not detail:
+            raise HTTPException(400, "该采集器还没有 AI 视觉修复建议,请先运行一次修复")
+        body = VisionConfigInput(
+            tab_selectors=detail.get("suggested_tab_selectors") or None,
+            screenshot_urls=detail.get("suggested_screenshot_urls") or None,
+            max_shots_per_page=detail.get("suggested_max_shots_per_page"),
+        )
+
+    config = _validate_vision_config(scraper, body)
+    store = _read_json(VISION_OVERRIDES_PATH, {})
+    previous = store.get(name) or {}
+    # 合并而非整体替换:只改一项(比如单独调截图张数)不该把已生效的 tab / URL 冲掉。
+    merged = {k: v for k, v in previous.items() if k in _VISION_CONFIG_FIELDS}
+    merged.update(config)
+    merged.update({"applied_at": _now(), "applied_by": admin.get("username", "")})
+    store[name] = merged
+    config = merged
+    _write_json(VISION_OVERRIDES_PATH, store)
+
+    tasks = _read_json(REPAIR_TASKS_PATH, {})
+    if name in tasks:
+        tasks[name]["status"] = "applied"
+        tasks[name]["applied_at"] = config["applied_at"]
+        _write_json(REPAIR_TASKS_PATH, tasks)
+    return {"ok": True, "applied": config, "previous": previous}
+
+
+@app.delete("/api/admin/scrapers/{name}/vision-config")
+def admin_revert_vision_config(name: str, admin: dict = Depends(require_admin)):
+    """回退到代码里写死的默认配置。"""
+    _vision_scraper_or_404(name)
+    store = _read_json(VISION_OVERRIDES_PATH, {})
+    removed = store.pop(name, None)
+    if removed is None:
+        raise HTTPException(404, "该采集器没有生效中的覆盖配置")
+    _write_json(VISION_OVERRIDES_PATH, store)
+    return {"ok": True, "removed": removed}
 
 
 @app.get("/api/admin/scrapers/{name}/ai-repair/{task_id}")

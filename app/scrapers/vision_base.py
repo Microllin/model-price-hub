@@ -31,6 +31,15 @@ def _agent_config() -> dict:
         return {}
 
 
+def _vision_overrides() -> dict:
+    """读 data/vision-overrides.json。读不到就返回空,绝不能让配置问题拖垮抓取。"""
+    import json
+    try:
+        return json.loads((settings.data_dir / "vision-overrides.json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
 def _has_credentials() -> bool:
     """视觉提取是否有可用凭据：后台配置 > MPH_ANTHROPIC_API_KEY > 标准环境变量。"""
     cfg = _agent_config()
@@ -113,6 +122,18 @@ class VisionScraper(BaseScraper):
     tab_selectors: list[str] = []       # 空 = 不点击;非空 = 逐个点击后各截一批
     screenshot_urls: list[str] = []     # 空 = 只截 source_url;非空 = 逐个 URL 各截一批
     max_shots_per_page: int = 10        # 每页最多滚动截几张视口图(重叠 ~40%)
+
+    def cfg(self, field: str):
+        """读配置:data/vision-overrides.json 里的覆盖值优先于类里写死的默认值。
+
+        视觉采集坏掉多半是「该点的 tab 改名了」「该截的区域移位了」，属于运营期
+        要频繁调的参数。走覆盖文件而不是改代码:后台点一下就能生效、可回退、
+        也不需要为改几个选择器重建镜像。
+        """
+        override = _vision_overrides().get(self.source_name) or {}
+        if field in override and override[field] not in (None, ""):
+            return override[field]
+        return getattr(type(self), field)
 
     @property
     def source_name(self) -> str:
@@ -198,14 +219,14 @@ class VisionScraper(BaseScraper):
                     viewport={"width": 1200, "height": 1050}, user_agent=settings.user_agent
                 )
                 # 视觉抓取不能拦截图片：部分价格表本身由图片/canvas 提供。
-                urls = self.screenshot_urls or [self.source_url]
+                urls = self.cfg("screenshot_urls") or [self.source_url]
                 for url in urls:
                     try:
                         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
                         await page.wait_for_timeout(6000)
                     except Exception:
                         continue
-                    for sel in self.tab_selectors or [None]:
+                    for sel in self.cfg("tab_selectors") or [None]:
                         if sel:
                             try:
                                 await page.click(f"text={sel}", timeout=6000)
@@ -220,7 +241,7 @@ class VisionScraper(BaseScraper):
     async def _scroll_shots(self, page):
         height = await page.evaluate("document.body.scrollHeight")
         y = 0
-        limit = min(self.max_shots_per_page, settings.vision_max_shots_per_page)
+        limit = min(int(self.cfg("max_shots_per_page")), settings.vision_max_shots_per_page)
         while y < max(height, 1) and y // 640 < limit:
             await page.evaluate(f"window.scrollTo(0,{y})")
             await page.wait_for_timeout(500)

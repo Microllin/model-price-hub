@@ -29,6 +29,15 @@ class FetchLevel:
     VISION = "vision"          # Level 4: Playwright 截图 + Claude 视觉 OCR
 
 
+def _fetch_chain_overrides() -> dict:
+    """读 data/fetch-chain-overrides.json。读不到就返回空,配置问题绝不能拖垮抓取。"""
+    import json
+    try:
+        return json.loads((settings.data_dir / "fetch-chain-overrides.json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
 class BaseScraper(abc.ABC):
     """所有抓取器的基类。
 
@@ -57,7 +66,16 @@ class BaseScraper(abc.ABC):
 
     @property
     def _effective_chain(self) -> list[str]:
-        """实际生效的降级链。"""
+        """实际生效的降级链:后台配置 > 子类声明 > 按 requires_render 推导。
+
+        取页方式是运营期要调的参数——页面改版后从「只读源码」升到「浏览器渲染」
+        往往就能修好，不该为此改代码重建镜像。所以支持用
+        data/fetch-chain-overrides.json 在运行时覆盖。
+        """
+        override = _fetch_chain_overrides().get(self.source_name) or {}
+        chain = override.get("fetch_chain")
+        if chain:
+            return list(chain)
         if self.fetch_chain is not None:
             return self.fetch_chain
         return self._default_chain()

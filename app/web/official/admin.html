@@ -148,6 +148,15 @@ tr:hover td { background:var(--hover); }
   background:rgba(148,163,184,.14); color:var(--muted); }
 .off-why { color:var(--faint); }
 .off-list { display:block; margin-top:4px; font-size:12px; color:var(--faint); }
+.chain-btn { background:transparent; border:0; padding:2px 0; color:var(--accent); font:inherit; font-size:11.5px; cursor:pointer; text-align:left; }
+.chain-btn:hover { text-decoration:underline; }
+.chain-edited { margin-left:6px; padding:1px 6px; border-radius:4px; font-size:10px; background:var(--accent-soft); color:var(--accent); }
+.lv { display:flex; gap:10px; align-items:flex-start; padding:10px; border-radius:8px; cursor:pointer; }
+.lv:hover { background:var(--hover); }
+.lv-off { opacity:.5; cursor:not-allowed; }
+.lv-main { display:flex; flex-direction:column; gap:2px; }
+.lv-desc { font-size:11.5px; color:var(--muted); }
+.lv-na { margin-left:8px; font-size:11px; color:var(--faint); }
 .steps { display:flex; align-items:center; gap:6px; font-size:11.5px; white-space:nowrap; }
 .step { color:var(--faint); }
 .step.done { color:var(--success); }
@@ -264,7 +273,7 @@ tr:hover td { background:var(--hover); }
         <table>
           <colgroup><col class="sc-status"><col class="sc-name"><col class="sc-url"><col class="sc-chain"><col class="sc-last"><col class="sc-items"><col class="sc-items"><col class="sc-act"></colgroup>
           <thead><tr>
-            <th>本次探测</th><th>脚本 / 厂商</th><th>官方页面</th><th>降级链</th><th>最近探测</th><th>已入库</th><th>本次</th><th>操作</th>
+            <th>本次探测</th><th>脚本 / 厂商</th><th>官方页面</th><th>取页方式</th><th>最近探测</th><th>已入库</th><th>本次</th><th>操作</th>
           </tr></thead>
           <tbody id="scraperBody"></tbody>
         </table>
@@ -313,6 +322,19 @@ tr:hover td { background:var(--hover); }
     <div class="actions">
       <button class="btn" onclick="closeKeyModal()">取消</button>
       <button class="btn primary" onclick="saveKey()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="chainModal" style="display:none" onclick="if(event.target===this)closeChain()">
+  <div class="modal">
+    <h3 id="chainTitle">取页方式</h3>
+    <div class="hint">系统按从上到下的顺序依次尝试，前一种没拿到数据就换下一种。勾得越多越不容易失败，但也越慢越贵。</div>
+    <div id="chainBody" style="margin-top:12px"></div>
+    <div class="actions">
+      <button class="btn" id="chainReset" onclick="resetChain()">恢复默认</button>
+      <button class="btn" onclick="closeChain()">取消</button>
+      <button class="btn primary" onclick="saveChain()">保存</button>
     </div>
   </div>
 </div>
@@ -549,6 +571,104 @@ async function adoptFix(name,btn){
     else { endSteps(name,'没有采到数据:'+(r.error||r.message||'原因未知'),false); }
     setTimeout(loadScrapers,2500);
   }catch(e){ clearInterval(tick); endSteps(name,'操作失败:'+(e.message||e),false); setTimeout(loadScrapers,2500); }
+}
+
+function scraperRows(list){
+  return list.map(s=>{
+    const note=s.error||s.message||'';
+    const err=note?`<span class="err-text" style="color:${s.status==='error'?'var(--danger)':'var(--muted)'}" title="${esc(note)}">${esc(note).slice(0,64)}</span>`:'';
+    const repairBadge=s.repair?repairTag(s.repair):'';
+    return `<tr>
+      <td><span class="dot ${STATUS_DOT[s.status]||'never'}"></span>${STATUS_TXT[s.status]||s.status}</td>
+      <td class="sc-name"><b>${esc(s.vendor_zh||s.provider)}</b><span>${esc(s.name)} · ${esc(s.class)}</span>${err}</td>
+      <td><a class="url-link" href="${esc(s.source_url)}" target="_blank" title="${esc(s.source_url)}">${esc(s.domain||s.source_url)}</a></td>
+      <td>${chainCell(s)}</td>
+      <td class="ts">${fmtTime(s.last_run)}${s.duration_ms?`<br>${s.duration_ms}ms`:''}</td>
+      <td class="items-n" title="最近入库:${fmtTime(s.data_last_scraped)}">${s.data_rows??0}</td>
+      <td class="items-n">${s.items??'—'}</td>
+      <td><div class="hb">
+        <button class="btn sm" onclick="runOne('${s.name}',this)">运行</button>
+        <button class="btn sm" onclick="openDetail('${s.name}')">详情</button>
+        <button class="btn sm" onclick="openVendor('${s.provider}')">厂商</button>
+        ${visionCfgBtns(s)}
+      </div>${repairBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+// 「降级链 html/render」是开发者术语，运营看不懂也调不了。
+// 换成大白话并做成可点击——页面改版后从「网页源码」升到「浏览器渲染」
+// 往往就能修好，不该为此改代码重建镜像。
+const LEVEL_TXT={api:'厂商接口',html:'网页源码',render:'浏览器渲染',vision:'截图识别'};
+const LEVEL_DESC={
+  api:'直接调用厂商提供的接口，最快最准，但多数厂商没有',
+  html:'直接下载网页源码来解析，快且省，读不到 JS 动态生成的内容',
+  render:'用浏览器打开并等页面加载完再读，慢一些，能拿到动态内容',
+  vision:'截图交给模型看图读价，最慢且按次计费，但不怕页面改版',
+};
+const LEVEL_ORDER=['api','html','render','vision'];
+function chainCell(s){
+  const txt=(s.fetch_chain||[]).map(c=>LEVEL_TXT[c]||c).join(' → ')||'—';
+  const edited=s.fetch_chain_override?'<span class="chain-edited">已调整</span>':'';
+  return `<button class="chain-btn" onclick="openChain('${s.name}')" title="点击调整取页方式">${esc(txt)}</button>${edited}`;
+}
+let chainEditing=null;
+function openChain(name){
+  const s=scrapers.find(x=>x.name===name); if(!s) return;
+  chainEditing=s;
+  const cur=s.fetch_chain||[], isVision=!!s.is_vision;
+  $('chainTitle').textContent=`取页方式 · ${s.vendor_zh||s.provider}`;
+  $('chainBody').innerHTML=LEVEL_ORDER.map(k=>{
+    const dis=(k==='vision'&&!isVision)?' disabled':'';
+    const na=(k==='vision'&&!isVision)?'<span class="lv-na">普通脚本不适用</span>':'';
+    return `<label class="lv${dis?' lv-off':''}">
+      <input type="checkbox" value="${k}" ${cur.includes(k)?'checked':''}${dis}>
+      <span class="lv-main"><b>${LEVEL_TXT[k]}</b>${na}<span class="lv-desc">${LEVEL_DESC[k]}</span></span>
+    </label>`;
+  }).join('');
+  $('chainReset').style.display=s.fetch_chain_override?'':'none';
+  $('chainModal').style.display='flex';
+}
+function closeChain(){ $('chainModal').style.display='none'; chainEditing=null; }
+async function saveChain(){
+  if(!chainEditing) return;
+  const picked=[...document.querySelectorAll('#chainBody input:checked')].map(i=>i.value);
+  if(!picked.length){ toast('至少要选一种取页方式','err'); return; }
+  try{
+    await api(`/admin/scrapers/${chainEditing.name}/fetch-chain`,{method:'POST',
+      body:JSON.stringify({fetch_chain:LEVEL_ORDER.filter(k=>picked.includes(k))})});
+    toast('已保存，下次采集生效','ok'); closeChain(); loadScrapers();
+  }catch(e){ toast('保存失败:'+(e.message||e),'err'); }
+}
+async function resetChain(){
+  if(!chainEditing) return;
+  try{
+    await api(`/admin/scrapers/${chainEditing.name}/fetch-chain`,{method:'DELETE'});
+    toast('已恢复默认','ok'); closeChain(); loadScrapers();
+  }catch(e){ toast('恢复失败:'+(e.message||e),'err'); }
+}
+
+function visionCfgBtns(s){
+  // 正常区只保留「回退配置」——需要修的采集器都在上面的待办区，不在这张表里
+  if(!s.is_vision||!s.vision_config) return '';
+  return `<button class="btn sm" title="${esc(cfgSummary(s.vision_config))}" onclick="revertVisionCfg('${s.name}',this)">回退配置</button>`;
+}
+function cfgSummary(c){
+  if(!c) return '';
+  const parts=[];
+  if(c.tab_selectors&&c.tab_selectors.length) parts.push('点击 tab:'+c.tab_selectors.join('/'));
+  if(c.screenshot_urls&&c.screenshot_urls.length) parts.push('截取 '+c.screenshot_urls.length+' 个 URL');
+  if(c.max_shots_per_page) parts.push('每页 '+c.max_shots_per_page+' 张');
+  return (parts.join(' · ')||'无')+`(${fmtTime(c.applied_at)} 由 ${c.applied_by||'-'} 应用)`;
+}
+async function revertVisionCfg(name,btn){
+  if(!confirm('回退到代码里的默认配置?')) return;
+  btn.disabled=true; const old=btn.textContent; btn.textContent='回退中…';
+  try{
+    await api(`/admin/scrapers/${name}/vision-config`,{method:'DELETE'});
+    toast('已回退到默认配置','ok');
+    await loadScrapers();
+  }catch(e){ toast('回退失败:'+(e.message||e),'err'); btn.disabled=false; btn.textContent=old; }
 }
 
 function repairTag(r){

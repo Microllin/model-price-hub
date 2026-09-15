@@ -72,6 +72,7 @@ LLM_KEYS_PATH = DATA / "llm-keys.json"
 VENDOR_INFO_PATH = DATA / "vendor-info.json"
 REPAIR_TASKS_PATH = DATA / "repair-tasks.json"
 VISION_OVERRIDES_PATH = DATA / "vision-overrides.json"
+FETCH_CHAIN_OVERRIDES_PATH = DATA / "fetch-chain-overrides.json"
 SCRAPER_DRAFTS_PATH = DATA / "scraper-drafts.json"
 SESSION_COOKIE = "mph_official_session"
 SESSION_TTL = 7 * 24 * 3600
@@ -720,6 +721,7 @@ def admin_scrapers(admin: dict = Depends(require_admin)):
     repairs = _read_json(REPAIR_TASKS_PATH, {})
     baselines = _provider_baselines()
     vision_overrides = _read_json(VISION_OVERRIDES_PATH, {})
+    chain_overrides = _read_json(FETCH_CHAIN_OVERRIDES_PATH, {})
     items = []
     scrapers = {s.source_name: s for s in _official_scrapers()}
     for meta in _scraper_registry():
@@ -756,6 +758,7 @@ def admin_scrapers(admin: dict = Depends(require_admin)):
             } if rep else None,
             # 生效中的运行时覆盖配置(仅视觉采集器);None = 用代码里的默认值
             "vision_config": vision_overrides.get(meta["name"]),
+            "fetch_chain_override": chain_overrides.get(meta["name"]),
         })
     return {
         "items": items,
@@ -1479,6 +1482,70 @@ def _validate_vision_config(scraper: Any, body: VisionConfigInput) -> dict[str, 
     if not out:
         raise HTTPException(400, "没有可应用的配置项")
     return out
+
+
+# 取页方式:给运营看的大白话 + 代价说明。后台直接用这份，避免各处文案漂移。
+FETCH_LEVELS = {
+    "api": {"label": "厂商接口", "desc": "直接调用厂商提供的接口，最快最准，但多数厂商没有"},
+    "html": {"label": "网页源码", "desc": "直接下载网页源码来解析，快且省，读不到 JS 动态生成的内容"},
+    "render": {"label": "浏览器渲染", "desc": "用浏览器打开并等页面加载完再读，慢一些，能拿到动态内容"},
+    "vision": {"label": "截图识别", "desc": "截图交给模型看图读价，最慢且按次计费，但不怕页面改版"},
+}
+
+
+class FetchChainInput(BaseModel):
+    fetch_chain: list[str]
+
+
+@app.get("/api/admin/fetch-levels")
+def admin_fetch_levels(admin: dict = Depends(require_admin)):
+    """取页方式的可选项与说明，供后台渲染。"""
+    return {"levels": [{"key": k, **v} for k, v in FETCH_LEVELS.items()]}
+
+
+@app.post("/api/admin/scrapers/{name}/fetch-chain")
+def admin_set_fetch_chain(
+    name: str, body: FetchChainInput, admin: dict = Depends(require_admin)
+):
+    """覆盖该采集器的取页方式顺序(不改代码，可随时回退)。"""
+    scraper = next((s for s in _official_scrapers() if s.source_name == name), None)
+    if scraper is None:
+        raise HTTPException(404, f"未找到抓取器: {name}")
+
+    chain = [str(x).strip().lower() for x in body.fetch_chain if str(x).strip()]
+    unknown = [c for c in chain if c not in FETCH_LEVELS]
+    if unknown:
+        raise HTTPException(400, f"未知的取页方式: {'、'.join(unknown)}")
+    if not chain:
+        raise HTTPException(400, "至少要选一种取页方式")
+    if len(set(chain)) != len(chain):
+        raise HTTPException(400, "同一种取页方式不能重复")
+    # 截图识别按次计费且要跑浏览器，只有视觉采集器该用它;
+    # 普通脚本选上不会生效(它们的 fetch 不处理 vision 级),反而让人以为配好了。
+    is_vision = name.startswith("vision-") or "vision" in type(scraper).__name__.lower()
+    if "vision" in chain and not is_vision:
+        raise HTTPException(400, "「截图识别」只适用于视觉采集器，普通脚本请改用「浏览器渲染」")
+
+    store = _read_json(FETCH_CHAIN_OVERRIDES_PATH, {})
+    previous = store.get(name) or {}
+    store[name] = {
+        "fetch_chain": chain,
+        "applied_at": _now(),
+        "applied_by": admin.get("username", ""),
+    }
+    _write_json(FETCH_CHAIN_OVERRIDES_PATH, store)
+    return {"ok": True, "applied": store[name], "previous": previous}
+
+
+@app.delete("/api/admin/scrapers/{name}/fetch-chain")
+def admin_reset_fetch_chain(name: str, admin: dict = Depends(require_admin)):
+    """恢复成代码里的默认取页方式。"""
+    store = _read_json(FETCH_CHAIN_OVERRIDES_PATH, {})
+    removed = store.pop(name, None)
+    if removed is None:
+        raise HTTPException(404, "该采集器没有生效中的取页方式覆盖")
+    _write_json(FETCH_CHAIN_OVERRIDES_PATH, store)
+    return {"ok": True, "removed": removed}
 
 
 @app.post("/api/admin/scrapers/{name}/vision-config")

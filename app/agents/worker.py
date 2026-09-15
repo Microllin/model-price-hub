@@ -43,9 +43,14 @@ async def process_once():
                         html_path.write_text(html,encoding="utf-8")
                         await page.screenshot(path=str(png_path),full_page=True)
                         evidence_files.extend([str(html_path),str(png_path)])
-                        rows.extend(scraper.parse(html))
                         await page.close()
                 finally: await browser.close()
+            # 复核必须走抓取器自己的取页流程(scraper.fetch)，不能拿上面这个"朴素渲染"
+            # 的 HTML 去 parse。很多官方页是多 tab SPA(如智谱要依次点开 7 个 tab)，
+            # 朴素渲染只拿得到默认 tab，解析结果必然偏少；若拿这个偏少的数字去写批准，
+            # 护栏会误以为"复核确认过了"而放行，真实后果是把没抓到的历史价格当成
+            # 厂商下架清掉。上面的截图/HTML 仅作人工查证证据，不参与判定。
+            rows = await scraper.fetch()
             expected=int(task.get("payload",{}).get("new_count",-1))
             # 复核必须确认“页面结构”，不能只比较条目数；否则解析器漏字段会被误认为官方删除。
             structure_ok = True

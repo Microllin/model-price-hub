@@ -315,12 +315,15 @@ function renderFilters(){
 }
 // 列宽规格:w 是分配权重(宽屏按此比例铺满)，min 是可读下限(决定何时开始横滚)。
 // 加字段时只改这里;没登记的列走 COL_FALLBACK，不会撑破布局。
+// 权重按实测「装下最长内容所需宽度」配平(1920px 下量 200 行):
+// 模型需 295px 却只给过 210，是最挤的一列;而「时段」100% 为空、「服务档」92% 为空，
+// 却各占 170 / 92 的权重。把空列的份额让给模型与缓存写。
 const COL_SPEC={
-  vendor:{w:150,min:108}, model:{w:210,min:144}, updated:{w:120,min:96},
-  modality:{w:86,min:78}, context:{w:100,min:78}, currency:{w:64,min:56},
-  billing:{w:82,min:82}, tier:{w:92,min:72}, window:{w:170,min:96},
-  input:{w:96,min:76}, output:{w:96,min:76},
-  cacheRead:{w:96,min:76}, cacheWrite:{w:96,min:76}, source:{w:110,min:88},
+  vendor:{w:145,min:108}, model:{w:280,min:164}, updated:{w:116,min:96},
+  modality:{w:84,min:76}, context:{w:98,min:82}, currency:{w:74,min:66},
+  billing:{w:80,min:74}, tier:{w:70,min:60}, window:{w:92,min:72},
+  input:{w:92,min:78}, output:{w:92,min:78},
+  cacheRead:{w:92,min:78}, cacheWrite:{w:120,min:88}, source:{w:124,min:92},
 };
 const COL_FALLBACK={w:96,min:76};
 const colSpec=k=>COL_SPEC[k]||COL_FALLBACK;
@@ -412,6 +415,12 @@ function fmtP(v,cls){
 }
 function curTag(c){ return `<span class="tag ${c==='CNY'?'cny':'usd'}">${c}</span>`; }
 function buTag(b){ return `<span class="tag bu">${b}</span>`; }
+function ctxTitle(r){
+  const parts=[];
+  if(r.context_window) parts.push('上下文 '+r.context_window.toLocaleString());
+  if(r.max_output) parts.push('最大输出 '+r.max_output.toLocaleString());
+  return parts.join(' · ');
+}
 function fmtCtx(w){
   if(!w) return '';
   if(w>=1e6) return (w/1e6).toFixed(1)+'M';
@@ -458,7 +467,7 @@ function renderTable(data){
     const sep=(r.vendor!==lastVendor&&lastVendor!=='')?' class="vendor-sep"':''; lastVendor=r.vendor;
     const vn=lang==='zh'?(r.vendor_zh||r.vendor_name):r.vendor_name;
     const src=r.source_url?`<a class="src-link" href="${r.source_url}" target="_blank">${r.source} ↗</a>`:`<span class="src-link">${r.source}</span>`;
-    const cells={vendor:`<td class="vendor-cell" title="${r.vendor_name}">${vn}<span class="en">${r.vendor}</span></td>`,model:`<td class="model-cell" title="${r.model}">${r.model}</td>`,modality:`<td>${modalityLabel(r.modality)}</td>`,context:`<td class="ctx">${fmtCtx(r.context_window)}${r.max_output?' / '+fmtCtx(r.max_output):''}</td>`,currency:`<td>${curTag(r.currency)}</td>`,billing:`<td>${buTag(r.billing_unit)}</td>`,tier:`<td>${r.service_tier&&r.service_tier!=='standard'?`<span class="tag tier">${r.service_tier}</span>`:''}</td>`,window:`<td>${fmtTW(r.time_window)}</td>`,input:fmtP(r.input_price,'p-in'),output:fmtP(r.output_price,'p-out'),cacheRead:cachePrice(r.cached_read,r.cache_state,'p-cache'),cacheWrite:cachePrice(r.cached_write,r.cache_state,'p-cache'),source:`<td>${src}</td>`,updated:freshCell(r)};
+    const cells={vendor:`<td class="vendor-cell" title="${r.vendor_name}">${vn}<span class="en">${r.vendor}</span></td>`,model:`<td class="model-cell" title="${r.model}">${r.model}</td>`,modality:`<td>${modalityLabel(r.modality)}</td>`,context:`<td class="ctx" title="${esc(ctxTitle(r))}">${fmtCtx(r.context_window)}${r.max_output?' / '+fmtCtx(r.max_output):''}</td>`,currency:`<td>${curTag(r.currency)}</td>`,billing:`<td>${buTag(r.billing_unit)}</td>`,tier:`<td>${r.service_tier&&r.service_tier!=='standard'?`<span class="tag tier">${r.service_tier}</span>`:''}</td>`,window:`<td>${fmtTW(r.time_window)}</td>`,input:fmtP(r.input_price,'p-in'),output:fmtP(r.output_price,'p-out'),cacheRead:cachePrice(r.cached_read,r.cache_state,'p-cache'),cacheWrite:cachePrice(r.cached_write,r.cache_state,'p-cache'),source:`<td>${src}</td>`,updated:freshCell(r)};
     return `<tr${sep}>${defs.map(([key])=>cells[key]).join('')}</tr>`;
   }).join('');
   renderPager(data.total);

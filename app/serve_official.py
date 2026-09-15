@@ -276,7 +276,8 @@ def overview():
             .join(Provider, Model.provider_id == Provider.id)
             .filter(*official_filters())
         )
-        total_prices = base.count()
+        merged = _merged_official_counts(s)
+        total_prices = merged["prices"]
         total_models = (
             s.query(func.count(distinct(Model.id)))
             .select_from(Model)
@@ -339,6 +340,9 @@ def list_vendors():
             .order_by(func.count(PricePlan.id).desc())
             .all()
         )
+        # 厂商标签上的条数必须和表格一致:表格走合并口径，这里若用原始行数，
+        # 就会出现标签写「智谱 89」而点进去只有 86 条。
+        merged = _merged_official_counts(s)
         out = []
         for r in rows:
             vi = vendor_info(r.slug, r.display_name)
@@ -349,8 +353,9 @@ def list_vendors():
                 "domain": vi["domain"],
                 "pricing_url": r.pricing_url,
                 "models": r.model_count,
-                "prices": r.price_count,
+                "prices": merged["per_vendor"].get(r.slug, r.price_count),
             })
+        out.sort(key=lambda x: x["prices"], reverse=True)
         return out
 
 
@@ -371,6 +376,59 @@ def _price_close(a: float | None, b: float | None) -> bool:
     return ref > 0 and abs(a - b) / ref <= _MERGE_TOLERANCE
 
 
+def _merge_key(it: dict) -> tuple:
+    """合并键的唯一定义。统计口径必须和表格用同一个键，
+    否则顶部写「592 条」而表格显示 589 条，厂商标签也会对不上。"""
+    return (
+        it["vendor"], (it["model"] or "").lower(), it["currency"], it["billing_unit"],
+        it.get("service_tier"), it.get("cache_state"), it.get("context_range"),
+        it.get("deployment_version"),
+        json.dumps(it.get("time_window"), sort_keys=True, ensure_ascii=False),
+        # 已下架的行要和在展的分开:它们是同一维度在不同时间点的记录，
+        # 混在一起比会把「上一版价格」误报成「来源之间有分歧」。
+        bool(it.get("delisted")),
+    )
+
+
+def _merged_official_counts(session: Any) -> dict[str, Any]:
+    """按合并口径统计:总条数、每个厂商的条数、模型数。
+
+    只取参与合并键的几列，600 行量级开销可忽略。
+    """
+    rows = (
+        session.query(
+            Provider.slug, Model.model_id, PricePlan.currency, PricePlan.billing_unit,
+            PricePlan.service_tier, PricePlan.cache_state, PricePlan.context_range,
+            PricePlan.deployment_version, PricePlan.time_window, PricePlan.is_current,
+        )
+        .select_from(PricePlan)
+        .join(Model, PricePlan.model_id == Model.id)
+        .join(Provider, Model.provider_id == Provider.id)
+        .filter(*official_filters())
+        .all()
+    )
+    keys: set[tuple] = set()
+    per_vendor: dict[str, set[tuple]] = {}
+    models: set[tuple] = set()
+    for r in rows:
+        it = {
+            "vendor": r[0], "model": r[1],
+            "currency": r[2].value if hasattr(r[2], "value") else r[2],
+            "billing_unit": r[3].value if hasattr(r[3], "value") else r[3],
+            "service_tier": r[4], "cache_state": r[5], "context_range": r[6],
+            "deployment_version": r[7], "time_window": r[8], "delisted": not r[9],
+        }
+        key = _merge_key(it)
+        keys.add(key)
+        per_vendor.setdefault(r[0], set()).add(key)
+        models.add((r[0], (r[1] or "").lower()))
+    return {
+        "prices": len(keys),
+        "per_vendor": {k: len(v) for k, v in per_vendor.items()},
+        "models": len(models),
+    }
+
+
 def _merge_by_source(items: list[dict]) -> list[dict]:
     """把只有来源不同的同一条价格合并成一行。
 
@@ -380,15 +438,7 @@ def _merge_by_source(items: list[dict]) -> list[dict]:
     groups: dict[tuple, list[dict]] = {}
     order: list[tuple] = []
     for it in items:
-        key = (
-            it["vendor"], (it["model"] or "").lower(), it["currency"], it["billing_unit"],
-            it.get("service_tier"), it.get("cache_state"), it.get("context_range"),
-            it.get("deployment_version"),
-            json.dumps(it.get("time_window"), sort_keys=True, ensure_ascii=False),
-            # 已下架的行要和在展的分开:它们是同一维度在不同时间点的记录，
-            # 混在一起比会把「上一版价格」误报成「来源之间有分歧」。
-            it.get("freshness") == "delisted",
-        )
+        key = _merge_key({**it, "delisted": it.get("freshness") == "delisted"})
         if key not in groups:
             groups[key] = []
             order.append(key)

@@ -354,6 +354,77 @@ def list_vendors():
         return out
 
 
+# 同一条价格被多个采集器各抓到一次时，前台不该并排显示两行一模一样的价格——
+# 那是我们内部有几个采集器，不是厂商有两个价。合并成一行，并把「几个来源都印证了」
+# 变成可信度信号:实测视觉识别读得准但读得少(召回约 1/3)，它的价值在校验而非采集。
+_MERGE_TOLERANCE = 0.01
+
+
+def _price_close(a: float | None, b: float | None) -> bool:
+    if a is None and b is None:
+        return True
+    if a is None or b is None:
+        return False
+    if a == b:
+        return True
+    ref = max(abs(a), abs(b))
+    return ref > 0 and abs(a - b) / ref <= _MERGE_TOLERANCE
+
+
+def _merge_by_source(items: list[dict]) -> list[dict]:
+    """把只有来源不同的同一条价格合并成一行。
+
+    主行优先取非视觉源:视觉识别每次认出的模型都不一样，拿它当展示值会让价格
+    时有时无;它更适合作为「另一个源也印证了这个数」的佐证。
+    """
+    groups: dict[tuple, list[dict]] = {}
+    order: list[tuple] = []
+    for it in items:
+        key = (
+            it["vendor"], (it["model"] or "").lower(), it["currency"], it["billing_unit"],
+            it.get("service_tier"), it.get("cache_state"), it.get("context_range"),
+            it.get("deployment_version"),
+            json.dumps(it.get("time_window"), sort_keys=True, ensure_ascii=False),
+            # 已下架的行要和在展的分开:它们是同一维度在不同时间点的记录，
+            # 混在一起比会把「上一版价格」误报成「来源之间有分歧」。
+            it.get("freshness") == "delisted",
+        )
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(it)
+
+    merged: list[dict] = []
+    for key in order:
+        group = groups[key]
+        if len(group) == 1:
+            row = dict(group[0])
+            row["sources"] = [row["source"]]
+            row["source_agreement"] = "single"
+            merged.append(row)
+            continue
+        primary = next((g for g in group if not (g["source"] or "").startswith("vision-")), group[0])
+        row = dict(primary)
+        row["sources"] = sorted({g["source"] for g in group})
+        agree = all(
+            _price_close(g.get("input_price"), primary.get("input_price"))
+            and _price_close(g.get("output_price"), primary.get("output_price"))
+            for g in group
+        )
+        row["source_agreement"] = "agree" if agree else "conflict"
+        if not agree:
+            row["conflicting"] = [
+                {"source": g["source"], "input_price": g.get("input_price"),
+                 "output_price": g.get("output_price")}
+                for g in group if g is not primary
+            ]
+        # 只要有一个源是新鲜的，这条价格就不该被标成陈旧
+        if any(g.get("freshness") == "fresh" for g in group):
+            row["freshness"], row["stale_reason"] = "fresh", None
+        merged.append(row)
+    return merged
+
+
 @app.get("/api/prices")
 def list_prices(
     vendor: str | None = None,
@@ -409,7 +480,8 @@ def list_prices(
         if q:
             query = query.filter(Model.model_id.ilike(f"%{q}%"))
 
-        total = query.count()
+        # 合并要在分页之前做，否则同一组的两行可能被切到不同页而合不起来。
+        # 官方口径下总量约 600 行，一次取全再分页的开销可以忽略。
         order_map = {
             "vendor": [Provider.slug, Model.model_id],
             "model": [Model.model_id, Provider.slug],
@@ -418,7 +490,7 @@ def list_prices(
         }
         for col in order_map.get(sort, order_map["vendor"]):
             query = query.order_by(col)
-        rows = query.offset(offset).limit(limit).all()
+        rows = query.all()
 
         status_store = _status_store()
         source_latest = _source_latest_scraped(s)
@@ -462,7 +534,9 @@ def list_prices(
                 "stale_reason": stale_reason,
                 "source_last_success": _iso_utc(src_status.get("last_success")),
             })
-        return {"total": total, "items": items}
+        items = _merge_by_source(items)
+        total = len(items)
+        return {"total": total, "items": items[offset : offset + limit]}
 
 
 @app.get("/api/compare")

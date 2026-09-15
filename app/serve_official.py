@@ -1236,7 +1236,10 @@ def page_index():
 
 @app.get("/admin", response_class=HTMLResponse)
 def page_admin():
-    return _frontend_page()
+    # 必须返回后台页。此前误用 _frontend_page()(与首页同一函数),导致 /admin 打开的是
+    # 前台价格浏览页,后台完全进不去。frontend/ 下的 Vue AdminView 目前仍是骨架,
+    # 真正可用的后台是 app/web/official/admin.html,故这里直接返回它。
+    return (WEB_DIR / "admin.html").read_text(encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -22,6 +22,11 @@ from app.models.pricing import Currency, RawPrice, Region
 from app.scrapers.base import BaseScraper
 
 
+class VisionSkipped(Exception):
+    """视觉采集被有意跳过(缺凭据 / 降频),不是「跑了但没解析出数据」。
+    两者混为一谈会让后台把一次正常跳过报成故障。"""
+
+
 def _ocr_key_from_admin() -> dict:
     """从后台「API Key」里取一把勾选了 ocr 用途的 Key。
 
@@ -222,16 +227,22 @@ class VisionScraper(BaseScraper):
         VisionScraper._vision_decided = should_run
         return should_run
 
+    # 后台手动点「运行」时置为 True:降频是为定时管线省 token 的，
+    # 人明确点了运行却被静默跳过、还报「未解析出价格数据」，只会让人以为是坏了。
+    force_vision: bool = False
+
     async def fetch(self) -> list[RawPrice]:
         if not settings.use_playwright:
             return []
         if not _has_credentials():
             print(f"  [skip] {self.__class__.__name__}: 无视觉凭据(设 ANTHROPIC_AUTH_TOKEN 或 MPH_ANTHROPIC_API_KEY),跳过")
-            return []
+            raise VisionSkipped("未配置视觉识别凭据")
         # 视觉频率控制:每 N 次管线运行才跑一次视觉 OCR,减少 token 消耗
-        if not self._should_run_vision():
+        if not self.force_vision and not self._should_run_vision():
             print(f"  [skip] {self.__class__.__name__}: 视觉验证本轮跳过(每 {settings.vision_run_every_n} 轮跑一次)")
-            return []
+            raise VisionSkipped(
+                f"按降频策略本轮跳过(每 {settings.vision_run_every_n} 轮跑一次视觉识别)"
+            )
         # 边截图边提取，不把长页面的所有 PNG 同时留在内存中。
         results: dict[str, RawPrice] = {}
         async for png in self._capture():

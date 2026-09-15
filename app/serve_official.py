@@ -807,10 +807,26 @@ async def _run_one_scraper(name: str, persist: bool = True) -> dict[str, Any]:
         })
         return {"ok": False, "skipped": True, "message": unavailable_reason}
 
+    # 人明确点了「运行」，就别被视觉降频拦下——降频是给定时管线省 token 的策略
+    if getattr(target, "force_vision", None) is False:
+        target.force_vision = True
+
     _save_status(name, {"status": "running", "result": "running", "last_run": _now(), "error": None, "message": None})
     started = time.time()
     try:
-        rows = await target.fetch()
+        from app.scrapers.vision_base import VisionSkipped
+
+        try:
+            rows = await target.fetch()
+        except VisionSkipped as skipped:
+            # 有意跳过 ≠ 跑了但没解析出数据。混为一谈会把正常跳过报成故障，
+            # 用户看到「未解析出价格数据」只会以为脚本坏了。
+            _save_status(name, {
+                "status": "unavailable", "result": "skipped", "last_run": _now(),
+                "duration_ms": int((time.time() - started) * 1000), "items": None,
+                "error": None, "message": str(skipped),
+            })
+            return {"ok": False, "skipped": True, "message": str(skipped)}
         for r in rows:
             r.source = target.source_name
         elapsed = int((time.time() - started) * 1000)

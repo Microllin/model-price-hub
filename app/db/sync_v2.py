@@ -151,13 +151,17 @@ def sync_v2_entries(
                 providers[e.provider] = p
                 stats["providers"] += 1
 
-        # --- 2. models：按 (provider_id, model_id) upsert ---
+        # --- 2. models：按 (provider_id, model_id) upsert，匹配时忽略大小写 ---
+        # 不同来源写同一个模型的大小写常常不一致(网页解析拿到 GLM-5.3，
+        # 视觉识别吐出 glm-5.3)。按原样精确匹配会把同一个模型建成两条记录，
+        # 前台就会并排出现两行一模一样的价格，模型总数也虚高。
+        # 这里按小写匹配，命中后沿用库里已有的写法，不改动已有记录。
         models: dict[tuple[int, str], Model] = {
-            (m.provider_id, m.model_id): m for m in s.scalars(select(Model)).all()
+            (m.provider_id, m.model_id.lower()): m for m in s.scalars(select(Model)).all()
         }
         for e in rows:
             pid = providers[e.provider].id
-            key = (pid, e.model)
+            key = (pid, (e.model or "").lower())
             m = models.get(key)
             if m is None:
                 m = Model(

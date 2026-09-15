@@ -861,10 +861,38 @@ async def _run_one_scraper(name: str, persist: bool = True) -> dict[str, Any]:
                 "message": msg,
             })
         else:
+            # 把每一级的真实结果如实列出来，而不是二选一地猜。
+            # xAI 就是典型:网页源码连接超时、浏览器渲染又没解析出数据——
+            # 只报其中一个都会把人指向错误的方向。
+            attempts = list(getattr(target, "last_attempts", []) or [])
+            NET_HINTS = ("Timeout", "ConnectError", "SSL", "ProxyError", "NameResolution")
+            parts, has_net, has_parse = [], False, False
+            for a in attempts:
+                label = LEVEL_LABEL.get(a.get("level"), a.get("level"))
+                if a.get("outcome") == "error":
+                    err = a.get("error", "")
+                    if any(k in err for k in NET_HINTS):
+                        has_net = True
+                        parts.append(f"{label} 连不上")
+                    else:
+                        parts.append(f"{label} 出错({err.split(':')[0]})")
+                elif a.get("outcome") == "empty":
+                    has_parse = True
+                    parts.append(f"{label} 没解析出数据")
+            trail = "；".join(parts) or "没有可用的取页方式"
+            if has_net and has_parse:
+                head = "部分取页方式连不上，其余取到了页面但解析不出"
+            elif has_net:
+                head = "页面连不上(网络不通，可能需要配置代理)"
+            else:
+                head = "页面取到了但没解析出价格，多半是页面结构变了"
             _save_status(name, {
-                "status": "warning", "result": "empty", "duration_ms": elapsed, "items": 0,
-                "error": None,
-                "message": "请求完成但未解析出价格数据；请检查页面结构或采集方式",
+                "status": "error" if (has_net and not has_parse) else "warning",
+                "result": "fetch_failed" if (has_net and not has_parse) else "empty",
+                "duration_ms": elapsed, "items": 0,
+                "error": next((a.get("error") for a in attempts if a.get("outcome") == "error"), None),
+                "message": f"{head}：{trail}"[:300],
+                "attempts": attempts,
             })
         return {
             "ok": bool(rows), "warning": not rows, "items": len(rows), "duration_ms": elapsed,
@@ -1485,6 +1513,8 @@ def _validate_vision_config(scraper: Any, body: VisionConfigInput) -> dict[str, 
 
 
 # 取页方式:给运营看的大白话 + 代价说明。后台直接用这份，避免各处文案漂移。
+LEVEL_LABEL = {"api": "厂商接口", "html": "网页源码", "render": "浏览器渲染", "vision": "截图识别"}
+
 FETCH_LEVELS = {
     "api": {"label": "厂商接口", "desc": "直接调用厂商提供的接口，最快最准，但多数厂商没有"},
     "html": {"label": "网页源码", "desc": "直接下载网页源码来解析，快且省，读不到 JS 动态生成的内容"},

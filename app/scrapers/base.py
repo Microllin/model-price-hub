@@ -59,6 +59,9 @@ class BaseScraper(abc.ABC):
     # 未设置时由 _default_chain() 根据 requires_render 推导
     fetch_chain: list[str] | None = None
 
+    # 最近一次 fetch 各级别的结果，供后台区分「取页失败」与「解析不出」
+    last_attempts: list[dict] = []
+
     @property
     def source_name(self) -> str:
         """数据源标识,用于多源交叉验证。默认取类名去掉 Scraper 后缀。"""
@@ -219,6 +222,10 @@ class BaseScraper(abc.ABC):
         """
         chain = self._effective_chain
         name = self.__class__.__name__
+        # 逐级记录结果。此前每级的异常只打到 stderr 就被吞掉，最终只剩一个空列表，
+        # 于是「页面根本打不开」和「打开了但解析不出」在后台显示成同一句话——
+        # 前者该去配代理，后者该去修解析器，指错方向很费时间。
+        self.last_attempts = []
 
         for level in chain:
             try:
@@ -237,11 +244,16 @@ class BaseScraper(abc.ABC):
                     continue
 
                 if result:
+                    self.last_attempts.append({"level": level, "outcome": "ok", "rows": len(result)})
                     print(f"  [{name}] {level} 成功: {len(result)} 条")
                     return result
                 else:
+                    self.last_attempts.append({"level": level, "outcome": "empty", "rows": 0})
                     print(f"  [{name}] {level} 返回空,降级…", file=sys.stderr)
             except Exception as exc:
+                self.last_attempts.append(
+                    {"level": level, "outcome": "error", "error": f"{type(exc).__name__}: {exc}"[:200]}
+                )
                 print(f"  [{name}] {level} 失败: {exc!r},降级…", file=sys.stderr)
 
         # 所有级别均失败,返回空

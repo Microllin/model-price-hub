@@ -459,6 +459,9 @@ function whatsWrong(s){
   if(s.is_vision && ['unavailable','never'].includes(s.status)) return '尚未启用(缺少视觉识别凭据)';
   const d=daysSince(s.data_last_scraped);
   const age=(d===null||d<=0)?'':`，已 ${d} 天没更新`;
+  // 后端现在会如实说明每一级的结果(连不上 / 没解析出数据)，比前端自己造句准确
+  const detail=(s.message||s.error||'').trim();
+  if(detail) return detail.slice(0,120)+age;
   if(s.status==='warning') return `打得开页面但没解析出价格${age}`;
   if(s.status==='error') return `运行报错${age}`;
   return '需要检查';
@@ -608,7 +611,10 @@ const LEVEL_DESC={
 };
 const LEVEL_ORDER=['api','html','render','vision'];
 function chainCell(s){
-  const txt=(s.fetch_chain||[]).map(c=>LEVEL_TXT[c]||c).join(' → ')||'—';
+  // 视觉采集器自己覆写了 fetch，根本不走降级链——照搬 fetch_chain 会显示成
+  // 「浏览器渲染 → 网页源码」，与它实际做的事(截图识别)完全不符。
+  const txt=s.is_vision?LEVEL_TXT.vision
+    :((s.fetch_chain||[]).map(c=>LEVEL_TXT[c]||c).join(' → ')||'—');
   const edited=s.fetch_chain_override?'<span class="chain-edited">已调整</span>':'';
   return `<button class="chain-btn" onclick="openChain('${s.name}')" title="点击调整取页方式">${esc(txt)}</button>${edited}`;
 }
@@ -616,7 +622,7 @@ let chainEditing=null;
 function openChain(name){
   const s=scrapers.find(x=>x.name===name); if(!s) return;
   chainEditing=s;
-  const cur=s.fetch_chain||[], isVision=!!s.is_vision;
+  const cur=s.is_vision?['vision']:(s.fetch_chain||[]), isVision=!!s.is_vision;
   $('chainTitle').textContent=`取页方式 · ${s.vendor_zh||s.provider}`;
   $('chainBody').innerHTML=LEVEL_ORDER.map(k=>{
     const dis=(k==='vision'&&!isVision)?' disabled':'';

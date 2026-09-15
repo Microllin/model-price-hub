@@ -48,17 +48,22 @@ textarea.ctrl { height:auto; padding:8px 12px; resize:vertical; }
 
 /* ── 布局 ── */
 .layout { display:flex; min-height:100vh; background:var(--bg); }
-.sidebar { width:232px; flex-shrink:0; background:#0d1a2b; color:#dce8f7; border-right:1px solid #223650; padding:22px 14px; position:sticky; top:0; height:100vh; overflow-y:auto; }
-.side-logo { display:flex; align-items:center; gap:9px; padding:4px 10px 16px; border-bottom:1px solid var(--border); margin-bottom:14px; }
+.sidebar { width:232px; flex-shrink:0; background:#0d1a2b; color:#dce8f7; border-right:1px solid #223650; padding:22px 0; position:sticky; top:0; height:100vh; overflow-y:auto; }
+.side-logo { display:flex; align-items:center; gap:9px; padding:4px 14px 16px; border-bottom:1px solid var(--border); margin-bottom:14px; }
 .side-logo .logo { width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#1688E8,#39A9F5);display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:#fff; }
 .side-logo b { font-size:14px; }
 .side-logo span { display:block; font-size:10px; color:#8196b2; font-weight:400; }
-.menu-item { display:flex; align-items:center; gap:9px; padding:9px 12px; border-radius:8px; color:var(--muted); font-size:13px; cursor:pointer; margin-bottom:2px; border:1px solid transparent; }
-.menu-item:hover { color:#fff; background:rgba(255,255,255,.07); }
-.menu-item.active { color:#fff; background:#1c4f78; border-color:#4fa7df; font-weight:600; }
+/* 一级菜单改为上下平铺:去掉圆角方框和描边，选中态只用左侧竖条 + 文字加重标识 */
+.menu-item { display:flex; align-items:center; gap:10px; padding:10px 12px; color:#93a7c2; font-size:13.5px;
+  cursor:pointer; border:0; border-left:2px solid transparent; background:transparent; }
+.menu-item:hover { color:#fff; background:rgba(255,255,255,.05); }
+.menu-item.active { color:#fff; border-left-color:var(--brand-300); background:rgba(57,169,245,.08); font-weight:600; }
 .menu-item .ico { width:16px; text-align:center; }
-.side-foot { margin-top:20px; padding:10px; border-top:1px solid var(--border); }
-.side-foot button { width:100%; margin-bottom:6px; }
+.side-foot { margin-top:22px; padding:12px 0 0; border-top:1px solid #223650; }
+/* 底部三项同样平铺，不再是三个带框按钮堆在一起 */
+.side-foot button { width:100%; margin-bottom:2px; justify-content:flex-start; padding:9px 12px;
+  background:transparent; color:#93a7c2; border-radius:0; }
+.side-foot button:hover { background:rgba(255,255,255,.05); color:#fff; }
 
 .main { flex:1; min-width:0; padding:30px clamp(18px,4vw,48px) 60px; }
 .main-hdr { display:flex; align-items:center; gap:12px; margin-bottom:22px; flex-wrap:wrap; }
@@ -74,13 +79,17 @@ textarea.ctrl { height:auto; padding:8px 12px; resize:vertical; }
 .main-hdr .spacer { flex:1; }
 
 /* ── 按钮 ── */
-.btn { display:inline-flex; align-items:center; gap:5px; padding:7px 14px; border-radius:8px; font-size:12.5px; cursor:pointer; border:1px solid var(--border2); background:var(--card2); color:var(--text); transition:all .15s; }
-.btn:hover { border-color:var(--accent); }
-.btn.primary { background:var(--brand-500); border-color:var(--brand-500); color:#fff; font-weight:600; }
-html.dark .btn.primary { background:var(--brand-400); border-color:var(--brand-400); }
-.btn.primary:hover { filter:brightness(1.1); }
-.btn.danger { color:var(--danger); border-color:var(--danger); background:transparent; }
-.btn.success { color:var(--success); border-color:var(--success); background:transparent; }
+/* 按钮去掉四周描边:一行里并排三四个带框的小按钮，框线比文字还抢眼。
+   改为无边框 + 淡底色，hover 才加深。 */
+.btn { display:inline-flex; align-items:center; gap:5px; padding:7px 14px; border-radius:7px; font-size:12.5px;
+  cursor:pointer; border:0; background:var(--hover); color:var(--text); transition:background .15s,color .15s; }
+.btn:hover { background:var(--accent-soft); color:var(--accent); }
+.btn.primary { background:var(--brand-500); color:#fff; font-weight:600; }
+html.dark .btn.primary { background:var(--brand-400); }
+.btn.primary:hover { filter:brightness(1.08); background:var(--brand-500); color:#fff; }
+.btn.danger { color:var(--danger); background:rgba(242,79,79,.1); }
+.btn.danger:hover { background:rgba(242,79,79,.18); color:var(--danger); }
+.btn.success { color:var(--success); background:rgba(58,209,134,.1); }
 .btn.sm { padding:4px 10px; font-size:11.5px; }
 .btn:disabled { opacity:.4; cursor:not-allowed; }
 .btn .spin { display:inline-block; animation:spin 1s linear infinite; }
@@ -142,6 +151,9 @@ tr:hover td { background:var(--hover); }
   background:rgba(148,163,184,.14); color:var(--muted); }
 .off-why { color:var(--faint); }
 .off-list { display:block; margin-top:4px; font-size:12px; color:var(--faint); }
+.row-inline { display:flex; gap:8px; align-items:center; }
+.row-inline .ctrl { flex:1; }
+.hint { margin-top:5px; font-size:11.5px; color:var(--faint); line-height:1.5; }
 .fold { margin:18px 0 8px; }
 .fold-hd { display:flex; align-items:center; gap:8px; background:transparent; border:0; cursor:pointer;
   color:var(--text); font:inherit; font-size:13px; font-weight:600; padding:4px 0; }
@@ -275,11 +287,19 @@ tr:hover td { background:var(--hover); }
     <div class="field"><label>名称(如:DeepSeek 官方 / OpenAI 备用)</label><input class="ctrl" id="kName" placeholder="DeepSeek 官方"></div>
     <div class="field"><label>Base URL(OpenAI 兼容接口)</label><input class="ctrl" id="kBase" placeholder="https://api.deepseek.com/v1"></div>
     <div class="field"><label>API Key</label><input class="ctrl" id="kKey" placeholder="sk-..."></div>
-    <div class="field"><label>模型</label><input class="ctrl" id="kModel" placeholder="deepseek-chat"></div>
+    <div class="field"><label>模型</label>
+      <div class="row-inline">
+        <input class="ctrl" id="kModel" placeholder="先点右侧拉取，或直接填写" list="kModelList">
+        <datalist id="kModelList"></datalist>
+        <button class="btn" type="button" id="kFetchBtn" onclick="fetchModels()">拉取可用模型</button>
+      </div>
+      <div class="hint" id="kModelHint">填好 Base URL 和 API Key 后可拉取该网关支持的模型</div>
+    </div>
     <div class="field"><label>用途(勾选)</label>
+      <div class="hint">不同用途可以用不同的 Key 和模型:各建一把、分别只勾一个用途即可</div>
       <div class="checks">
         <label><input type="checkbox" id="kPRepair" checked> AI 修复脚本</label>
-        <label><input type="checkbox" id="kPOcr"> 视觉 OCR</label>
+        <label><input type="checkbox" id="kPOcr"> 视觉 OCR(截图读价)</label>
         <label><input type="checkbox" id="kPMonitor"> Playwright 监控</label>
       </div>
     </div>
@@ -410,7 +430,7 @@ function whatsWrong(s){
   if(s.repair && s.repair.has_vision_fix) return 'AI 已给出修复建议，确认后即可应用';
   if(s.is_vision && ['unavailable','never'].includes(s.status)) return '尚未启用(缺少视觉识别凭据)';
   const d=daysSince(s.data_last_scraped);
-  const age=d===null?'':`，已 ${d} 天没更新`;
+  const age=(d===null||d<=0)?'':`，已 ${d} 天没更新`;
   if(s.status==='warning') return `打得开页面但没解析出价格${age}`;
   if(s.status==='error') return `运行报错${age}`;
   return '需要检查';
@@ -560,6 +580,19 @@ async function revertVisionCfg(name,btn){
     toast('↩ 已回退到默认配置','ok');
     await loadScrapers();
   }catch(e){ toast('回退失败:'+(e.message||e),'err'); btn.disabled=false; btn.textContent=old; }
+}
+
+async function fetchModels(){
+  const btn=$('kFetchBtn'), hint=$('kModelHint');
+  btn.disabled=true; const old=btn.textContent; btn.textContent='拉取中…';
+  try{
+    const r=await api('/admin/llm-keys/fetch-models',{method:'POST',body:JSON.stringify({
+      base_url:$('kBase').value.trim(), api_key:$('kKey').value.trim(), key_id:(typeof editingKey!=='undefined'&&editingKey?editingKey.id:'')})});
+    $('kModelList').innerHTML=r.models.map(m=>`<option value="${esc(m)}">`).join('');
+    hint.textContent=`拉到 ${r.models.length} 个模型,点输入框可选`;
+    if(r.models.length&&!$('kModel').value) $('kModel').value=r.models[0];
+  }catch(e){ hint.textContent='拉取失败:'+(e.message||e); }
+  btn.disabled=false; btn.textContent=old;
 }
 
 function repairTag(r){

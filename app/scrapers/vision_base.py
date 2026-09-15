@@ -22,13 +22,52 @@ from app.models.pricing import Currency, RawPrice, Region
 from app.scrapers.base import BaseScraper
 
 
-def _agent_config() -> dict:
-    """从 data/agent-config.json 读取后台配置的视觉模型凭据。"""
+def _ocr_key_from_admin() -> dict:
+    """从后台「API Key」里取一把勾选了 ocr 用途的 Key。
+
+    后台 Key 存在 data/llm-keys.json，而视觉这边历史上只读 data/agent-config.json，
+    两个文件互不相通——结果是用户在后台勾了 OCR 用途、界面显示配好了，
+    视觉采集器却一直报「未配置视觉 OCR 凭据」并静默跳过。
+    """
     import json
     try:
-        return json.loads((settings.data_dir / "agent-config.json").read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError):
+        keys = json.loads((settings.data_dir / "llm-keys.json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
         return {}
+    if not isinstance(keys, list):
+        return {}
+    for key in keys:
+        if not isinstance(key, dict) or not key.get("enabled"):
+            continue
+        if "ocr" not in (key.get("purposes") or []):
+            continue
+        if not key.get("api_key"):
+            continue
+        return {
+            "api_key": key["api_key"],
+            "base_url": key.get("base_url") or "",
+            "vision_model": key.get("model") or "",
+            "_source": f"后台 Key「{key.get('name') or key.get('id')}」",
+        }
+    return {}
+
+
+def _agent_config() -> dict:
+    """视觉模型凭据。data/agent-config.json 优先，其次取后台勾了 ocr 用途的 Key。"""
+    import json
+    try:
+        cfg = json.loads((settings.data_dir / "agent-config.json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        cfg = {}
+    if not isinstance(cfg, dict):
+        cfg = {}
+    if cfg.get("api_key"):
+        return cfg
+    fallback = _ocr_key_from_admin()
+    # agent-config 里单独配的 vision_model 仍然优先
+    if fallback and cfg.get("vision_model"):
+        fallback["vision_model"] = cfg["vision_model"]
+    return fallback or cfg
 
 
 def _vision_overrides() -> dict:

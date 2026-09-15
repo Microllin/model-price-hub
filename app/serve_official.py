@@ -1626,6 +1626,51 @@ def llm_keys_delete(kid: str, admin: dict = Depends(require_admin)):
     return {"ok": True}
 
 
+class FetchModelsInput(BaseModel):
+    base_url: str = ""
+    api_key: str = ""
+    key_id: str = ""   # 编辑已有 Key 时不必重新填 Key，按 id 取库里那把
+
+
+@app.post("/api/admin/llm-keys/fetch-models")
+async def admin_fetch_models(body: FetchModelsInput, admin: dict = Depends(require_admin)):
+    """拉取该网关可用的模型列表，供表单下拉选择，避免手输模型名打错。"""
+    base = (body.base_url or "").strip().rstrip("/")
+    api_key = (body.api_key or "").strip()
+    # 列表接口返回的 api_key 是打码的(sk-e****6e)，编辑表单里拿到的就是这个值。
+    # 所以只要带了 key_id，且用户没重新输入一把完整的 Key，就用库里的真值。
+    if body.key_id and (not api_key or "*" in api_key):
+        stored = next(
+            (k for k in _read_json(LLM_KEYS_PATH, []) if k.get("id") == body.key_id), None
+        )
+        if stored:
+            api_key = stored.get("api_key", "")
+            base = base or (stored.get("base_url") or "").rstrip("/")
+    if not base or not api_key:
+        raise HTTPException(400, "请先填写 Base URL 和 API Key")
+
+    url = f"{base}/models" if base.endswith("/v1") else f"{base}/v1/models"
+    try:
+        async with httpx.AsyncClient(timeout=30) as cli:
+            resp = await cli.get(
+                url, headers={"Authorization": f"Bearer {api_key}", "x-api-key": api_key}
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except ValueError:
+        raise HTTPException(502, f"接口返回的不是 JSON，请检查 Base URL:{url}") from None
+    except Exception as exc:
+        raise HTTPException(502, f"{type(exc).__name__}:{exc}"[:200]) from None
+
+    raw = data.get("data") if isinstance(data, dict) else data
+    if not isinstance(raw, list):
+        raise HTTPException(502, "返回格式无法识别，没有模型列表")
+    models = sorted(
+        {(m.get("id") or m.get("name") or "") if isinstance(m, dict) else str(m) for m in raw} - {""}
+    )
+    return {"ok": True, "url": url, "models": models}
+
+
 @app.post("/api/admin/llm-keys/{kid}/test")
 async def llm_keys_test(kid: str, admin: dict = Depends(require_admin)):
     keys = _read_json(LLM_KEYS_PATH, [])

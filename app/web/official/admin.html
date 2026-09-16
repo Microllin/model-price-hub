@@ -565,13 +565,22 @@ async function adoptFix(name,btn){
   const tick=setInterval(()=>showSteps(name,steps,1),1000);
   try{
     showSteps(name,steps,0);
-    await api(`/admin/scrapers/${name}/vision-config`,{method:'POST',body:'{}'});
-    showSteps(name,steps,1,'正在截图并交给模型识别，请稍候');
+    const cfg=await api(`/admin/scrapers/${name}/vision-config`,{method:'POST',body:'{}'});
+    // 如实说明配置到底有没有变。同一份建议被应用第二次时，界面若只显示「已应用」，
+    // 而结果毫无变化，看起来就像功能坏了——实测发生过。
+    showSteps(name,steps,1, cfg.unchanged
+      ? '建议的配置与当前生效的完全相同，配置未改动;下面仍会重跑一次采集'
+      : '配置已更新，正在按新配置重新采集');
     const r=await api(`/admin/scrapers/${name}/run`,{method:'POST'});
     clearInterval(tick);
-    if(r.skipped){ endSteps(name,'已跳过:'+(r.message||''),false); }
-    else if(r.ok){ endSteps(name,`采集成功:${r.items} 条,用时 ${Math.round((r.duration_ms||0)/1000)}s`,true); }
-    else { endSteps(name,'没有采到数据:'+(r.error||r.message||'原因未知'),false); }
+    const pre=cfg.unchanged?'配置本来就是这样(未改动)。':'';
+    if(r.skipped){ endSteps(name,pre+'本次跳过:'+(r.message||''),false); }
+    else if(r.error&&/运行中/.test(r.error)){ endSteps(name,'已有一次采集正在进行，等它跑完再试',false); }
+    else if(r.ok){
+      const n=r.items??0;
+      endSteps(name, pre+(n>0?`采到 ${n} 条,用时 ${Math.round((r.duration_ms||0)/1000)}s`:'跑完了但没采到数据'), n>0);
+    }
+    else { endSteps(name,pre+'没有采到数据:'+(r.error||r.message||'原因未知'),false); }
     setTimeout(loadScrapers,2500);
   }catch(e){ clearInterval(tick); endSteps(name,'操作失败:'+(e.message||e),false); setTimeout(loadScrapers,2500); }
 }

@@ -1723,9 +1723,18 @@ def admin_apply_vision_config(
     store = _read_json(VISION_OVERRIDES_PATH, {})
     previous = store.get(name) or {}
     # 合并而非整体替换:只改一项(比如单独调截图张数)不该把已生效的 tab / URL 冲掉。
-    merged = {k: v for k, v in previous.items() if k in _VISION_CONFIG_FIELDS}
+    # 除了配置项，其余字段(如人工写的 note)也原样保留，别被一次应用擦掉。
+    merged = dict(previous)
     merged.update(config)
     merged.update({"applied_at": _now(), "applied_by": admin.get("username", "")})
+
+    # 建议与当前生效的配置完全相同时如实告知。否则「采用建议」点下去什么都没变，
+    # 用户只会以为功能坏了——实测就发生过:同一份建议被应用两次。
+    def _cfg_only(d: dict) -> dict:
+        return {k: d.get(k) for k in _VISION_CONFIG_FIELDS if d.get(k) not in (None, "", [])}
+
+    unchanged = _cfg_only(previous) == _cfg_only(merged) and bool(previous)
+
     store[name] = merged
     config = merged
     _write_json(VISION_OVERRIDES_PATH, store)
@@ -1735,7 +1744,7 @@ def admin_apply_vision_config(
         tasks[name]["status"] = "applied"
         tasks[name]["applied_at"] = config["applied_at"]
         _write_json(REPAIR_TASKS_PATH, tasks)
-    return {"ok": True, "applied": config, "previous": previous}
+    return {"ok": True, "applied": config, "previous": previous, "unchanged": unchanged}
 
 
 @app.delete("/api/admin/scrapers/{name}/vision-config")

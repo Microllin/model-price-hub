@@ -1,0 +1,61 @@
+# 构建上下文排除清单。
+# 没有这个文件时，构建上下文约 140MB，并且 COPY data ./data 会把
+# data/llm-keys.json(真实 API Key)、admin.json(密码哈希)、admin-sessions.json
+# (会话令牌)一并打进镜像层——镜像一分发，凭据就跟着走。
+
+# ---- 凭据与登录态：绝不进镜像 ----
+.env
+*.env
+data/llm-keys.json
+data/admin.json
+data/admin-sessions.json
+data/api-keys.json
+data/agent-config.json
+
+# ---- 运行期数据与生成物：容器启动时通过挂载提供，无需打进镜像 ----
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite.bak-*
+data/snapshots/
+data/agent-evidence/
+data/latest.json
+data/drift.json
+data/pipeline-health.json
+data/pipeline-health.lock
+data/agent-tasks.json
+data/agent-approvals.json
+data/repair-tasks.json
+data/scraper-status.json
+data/scraper-drafts.json
+data/webhooks.json
+data/webhook-removal-state.json
+data/policy.json
+data/vision-run-counter.json
+data/vendor-info.json
+
+# 保留少量随镜像分发的静态配置:
+#   data/overrides.yaml  人工价格覆盖
+#   data/sources.json    源清单
+#   data/vision-overrides.json / fetch-chain-overrides.json  采集参数
+#   data/.gitkeep        保证 COPY data 有内容可拷
+
+# ---- 体积 ----
+.git/
+.github/
+frontend/node_modules/
+frontend/dist/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+tests/fixtures/screenshots/
+docs/audit/
+
+# ---- 本地杂项 ----
+.idea/
+.vscode/
+.DS_Store
+*.log
